@@ -1,9 +1,9 @@
-// app/admin/page.tsx
+// app/(admin)/admin/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma"; // optional if you want to query
-//import SignOutButton from "@/components/signout-button"; // optional if you built it
+import { prisma } from "@/lib/prisma";
+import LogoutButton from "@/components/ui/logout-button";
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
@@ -23,10 +23,9 @@ export default async function AdminPage() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-        {/* Optional sign out button */}
-        {/*
-        <SignOutButton />
-        */}
+        <LogoutButton variant="danger" size="md">
+          Sign Out
+        </LogoutButton>
       </div>
 
       <p className="mt-2 text-gray-600">

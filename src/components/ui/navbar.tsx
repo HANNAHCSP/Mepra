@@ -1,4 +1,4 @@
-// src/components/navbar.tsx
+// src/components/ui/navbar.tsx
 "use client";
 
 import Link from "next/link";
@@ -6,8 +6,19 @@ import { useSession } from "next-auth/react";
 import { Search, User2, Heart, ShoppingBag } from "lucide-react";
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const cartCount = 0; // TODO: wire to your cart state
+
+  // Determine the correct account URL based on authentication and role
+  const getAccountUrl = () => {
+    if (status === "loading") return "/signin"; // Default while loading
+    if (!session?.user) return "/signin"; // Not signed in
+    
+    // Signed in - redirect based on role
+    return session.user.role === "admin" ? "/admin" : "/account";
+  };
+
+  const accountUrl = getAccountUrl();
 
   return (
     <nav className="bg-white text-gray-900">
@@ -56,11 +67,13 @@ export default function Navbar() {
               </Link>
 
               <Link
-                href={session ? "/account" : "/signin"}
+                href={accountUrl}
                 className="inline-flex items-center gap-2 text-gray-700 hover:text-amber-500"
               >
                 <User2 size={16} />
-                <span className="uppercase">Account</span>
+                <span className="uppercase">
+                  {session?.user ? (session.user.role === "admin" ? "Admin" : "Account") : "Account"}
+                </span>
               </Link>
 
               <Link

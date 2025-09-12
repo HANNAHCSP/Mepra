@@ -27,11 +27,11 @@ export default function LogoutButton({
     try {
       await signOut({
         redirect: false, // Don't auto-redirect
-        callbackUrl: "/sign-in" // Where to redirect after logout
+        callbackUrl: "/signin" // Where to redirect after logout
       });
       
       // Manual redirect to ensure it happens
-      router.replace("/sign-in");
+      router.replace("/signin");
       router.refresh();
     } catch (error) {
       console.error("Logout error:", error);
