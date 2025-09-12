@@ -13,8 +13,8 @@ const CredentialsSchema = z.object({
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: {
-    signIn: "/sign-in",
-    error: "/sign-in",
+    signIn: "/signin",
+    error: "/signin",
   },
   providers: [
     Credentials({
@@ -24,8 +24,11 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       authorize: async (raw) => {
-        console.log("🔐 Authorize called with:", { email: raw?.email, hasPassword: !!raw?.password });
-        
+        console.log("🔐 Authorize called with:", {
+          email: raw?.email,
+          hasPassword: !!raw?.password,
+        });
+
         const parsed = CredentialsSchema.safeParse(raw);
         if (!parsed.success) {
           console.log("❌ Validation failed:", parsed.error.issues);
@@ -40,7 +43,7 @@ export const authOptions: NextAuthOptions = {
             where: { email: email.toLowerCase() },
             select: { id: true, name: true, email: true, role: true, password: true },
           });
-          
+
           console.log("👤 User found:", user ? "Yes" : "No");
           if (!user || !user.password) {
             console.log("❌ No user or no password");
@@ -50,7 +53,7 @@ export const authOptions: NextAuthOptions = {
           console.log("🔑 Comparing passwords...");
           const ok = await compare(password, user.password);
           console.log("🔑 Password match:", ok);
-          
+
           if (!ok) return null;
 
           const appUser = {
@@ -59,7 +62,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             email: user.email,
           };
-          
+
           console.log("✅ Returning user:", { id: user.id, email: user.email, role: user.role });
           return appUser;
         } catch (error) {
