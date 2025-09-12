@@ -1,9 +1,11 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
-@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@import "tailwindcss";
+
+
+@plugin "tailwindcss-animate";
+
+/* your variant + theme + tokens stay the same */
+@custom-variant dark (&:is(.dark *));  /* ok in v4 */
 
 @theme inline {
   --color-background: var(--background);
@@ -115,10 +117,6 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
 }

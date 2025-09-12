@@ -1,0 +1,14 @@
+# Build output
+.next/
+out/
+build/
+coverage/
+node_modules/
+
+# Generated files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Misc
+.DS_Store

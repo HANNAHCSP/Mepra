@@ -169,7 +169,7 @@ export default function SignInPage() {
             disabled={isSubmitting}
             className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
           >
-            {isSubmitting ? "Signing in…" : "Sign in"}
+            {isSubmitting ? "Signing in…" : "Signin"}
           </button>
         </form>
 
