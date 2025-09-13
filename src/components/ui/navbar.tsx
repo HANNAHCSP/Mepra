@@ -1,15 +1,14 @@
-// src/components/ui/navbar.tsx
-"use client";
+'use client'
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Search, User2, Heart, ShoppingBag } from "lucide-react";
+import { Search, User2, Heart } from "lucide-react";
 
-export default function Navbar() {
+// The component now accepts an optional 'cart' prop of type React.ReactNode.
+export default function Navbar({ cart }: { cart?: React.ReactNode }) {
   const { data: session, status } = useSession();
-  const cartCount = 0; // TODO: wire to your cart state
-
-  // Determine the correct account URL based on authentication and role
+  
+  // This logic correctly determines where the account link should go
   const getAccountUrl = () => {
     if (status === "loading") return "/signin"; // Default while loading
     if (!session?.user) return "/signin"; // Not signed in
@@ -25,7 +24,6 @@ export default function Navbar() {
       {/* Black Top strip */}
       <div className="bg-black text-white text-[11px]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-8 flex items-center justify-end gap-6">
-         
         </div>
       </div>
 
@@ -84,16 +82,9 @@ export default function Navbar() {
                 <span className="uppercase">My Wishlist</span>
               </Link>
 
-              <Link
-                href="/cart"
-                className="inline-flex items-center gap-2 text-gray-700 hover:text-amber-500"
-              >
-                <ShoppingBag size={16} />
-                <span className="uppercase">Cart</span>
-                <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] font-bold text-white">
-                  {cartCount}
-                </span>
-              </Link>
+              {/* The dynamic CartButton component passed from the layout is rendered here */}
+              {cart}
+
             </div>
           </div>
         </div>
