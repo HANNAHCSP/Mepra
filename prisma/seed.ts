@@ -7,7 +7,7 @@ async function main() {
       name: 'Classic White T-Shirt',
       description: 'A timeless classic, perfect for any occasion.',
       handle: 'classic-white-t-shirt',
-      imageUrl: '/images/t-shirt-white.jpg',
+      imageUrl: '/images/t-shirt-white.jpeg',
       variants: {
         create: [
           { sku: 'CWT-S', price: 2500, stock: 100, attributes: { size: 'S' } },
@@ -23,7 +23,7 @@ async function main() {
       name: 'Denim Jeans',
       description: 'Comfortable and stylish denim jeans.',
       handle: 'denim-jeans',
-      imageUrl: '/images/denim-jeans.jpg',
+      imageUrl: '/images/denim-jeans.jpeg',
       variants: {
         create: [
           { sku: 'DJ-30', price: 7500, stock: 80, attributes: { size: '30' } },

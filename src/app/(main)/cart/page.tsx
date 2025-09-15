@@ -1,7 +1,9 @@
+// src/app/(main)/cart/page.tsx
 import { getCart } from "@/app/actions/cart";
 import Link from "next/link";
 import CartItem from "@/components/ui/cart/cart-item";
 import { CartItemWithProduct } from "@/types/cart";
+import CheckoutButton from "@/components/ui/cart/checkout-button";
 
 export default async function CartPage() {
   const cart = await getCart();
@@ -10,6 +12,9 @@ export default async function CartPage() {
       (acc, item) => acc + item.quantity * item.variant.price,
       0
     ) ?? 0;
+
+  // Calculate total number of items
+  const itemCount = cart?.items.reduce((acc, item) => acc + item.quantity, 0) ?? 0;
 
   return (
     <div className="bg-white">
@@ -61,12 +66,8 @@ export default async function CartPage() {
             </dl>
 
             <div className="mt-6">
-              <button
-                type="submit"
-                className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
-              >
-                Checkout
-              </button>
+              {/* Pass the itemCount to the button */}
+              <CheckoutButton itemCount={itemCount} />
             </div>
             <div className="mt-6 text-center text-sm">
                 <p>

@@ -64,7 +64,7 @@ model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
-  expires      DateTime // Corrected from expiresAt
+  expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -119,9 +119,9 @@ model Address {
 // Shopping Cart (temporary state)
 model Cart {
   id        String     @id @default(cuid())
-  userId    String?     @unique
-  user      User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guestId   String?    @unique
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestId   String?    @unique // We can use this for anonymous carts
   items     CartItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -135,21 +135,26 @@ model CartItem {
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   quantity  Int
 
-  @@unique([cartId, variantId]) // A product can only appear once per cart
+  @@unique([cartId, variantId])
 }
 
 
 // Order (permanent record of a purchase)
 model Order {
   id               String      @id @default(cuid())
-  userId           String? // Optional for guest checkouts
-  user             User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId           String?     // Can be null for guest checkouts
+  user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   status           OrderStatus @default(PENDING)
-  total            Int // Store total in cents
-  shippingAddress  Json // Store a snapshot of the address
-  customerEmail    String // Required for guest and user checkouts
+  total            Int         // Store total in cents
+  shippingAddress  Json        // Store a snapshot of the address
+  customerEmail    String      // ALWAYS required, for guests and users
   createdAt        DateTime    @default(now())
   
+  // New fields for guest access and account upgrades
+  guestId          String?     @unique // To link guest orders together before account creation
+  orderNumber      String      @unique // A human-friendly order number
+  accessToken      String      @unique @default(cuid()) // For secure guest access to the order status page
+
   items            OrderItem[]
 }
 
@@ -161,6 +166,6 @@ model OrderItem {
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   
   quantity  Int
-  price     Int // Store price at time of purchase, in cents
+  price     Int    // Store price at time of purchase, in cents
   name      String // Store product name at time of purchase
 }
