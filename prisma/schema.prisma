@@ -9,37 +9,45 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ENUMS for status tracking
+// ENUMS
 enum Role {
   admin
   user
 }
 
 enum OrderStatus {
-  PENDING
-  PROCESSING
+  DRAFT // Order created, but not yet placed (e.g., during checkout)
+  PENDING // Order placed, awaiting payment confirmation
+  CONFIRMED // Payment confirmed, ready for fulfillment
   SHIPPED
   DELIVERED
   CANCELED
+  REFUNDED
 }
 
-// AUTHENTICATION MODELS (NextAuth)
-model User {
-  id        String   @id @default(cuid())
-  name      String?
-  email     String   @unique
-  role      Role     @default(user)
-  password  String // bcrypt hash
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
 
-  // E-commerce relations
+// AUTH MODELS (NextAuth - mostly unchanged)
+model User {
+  id        String    @id @default(cuid())
+  name      String?
+  email     String    @unique
+  role      Role      @default(user)
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   addresses Address[]
   orders    Order[]
   cart      Cart?
-  // NextAuth relations
-  accounts Account[]
-  sessions Session[]
+  accounts  Account[]
+  sessions  Session[]
 }
 
 model Account {
@@ -76,33 +84,29 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-
 // E-COMMERCE MODELS
 model Product {
-  id          String @id @default(cuid())
+  id          String         @id @default(cuid())
   name        String
-  description String @db.Text
-  handle      String @unique
+  description String         @db.Text
+  handle      String         @unique
   imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  variants ProductVariant[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  variants    ProductVariant[]
 }
 
 model ProductVariant {
-  id        String  @id @default(cuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sku       String? @unique
-  price     Int // Store price in cents
-  stock     Int     @default(0)
+  id         String     @id @default(cuid())
+  productId  String
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String?    @unique
+  price      Int // Store price in cents
+  stock      Int        @default(0)
   attributes Json? // e.g., {"size": "M", "color": "Blue"}
-
-  cartItems CartItem[]
+  cartItems  CartItem[]
   orderItems OrderItem[]
 }
-
 
 model Address {
   id        String  @id @default(cuid())
@@ -116,21 +120,21 @@ model Address {
   isDefault Boolean @default(false)
 }
 
-// Shopping Cart (temporary state)
+// CART (unchanged)
 model Cart {
   id        String     @id @default(cuid())
   userId    String?    @unique
   user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guestId   String?    @unique // We can use this for anonymous carts
+  guestId   String?    @unique
   items     CartItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
 
 model CartItem {
-  id        String  @id @default(cuid())
+  id        String         @id @default(cuid())
   cartId    String
-  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
   quantity  Int
@@ -138,34 +142,57 @@ model CartItem {
   @@unique([cartId, variantId])
 }
 
-
-// Order (permanent record of a purchase)
+// ORDER & PAYMENT (Significantly updated)
 model Order {
-  id               String      @id @default(cuid())
-  userId           String?     // Can be null for guest checkouts
-  user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status           OrderStatus @default(PENDING)
-  total            Int         // Store total in cents
-  shippingAddress  Json        // Store a snapshot of the address
-  customerEmail    String      // ALWAYS required, for guests and users
-  createdAt        DateTime    @default(now())
-  
-  // New fields for guest access and account upgrades
-  guestId          String?     @unique // To link guest orders together before account creation
-  orderNumber      String      @unique // A human-friendly order number
-  accessToken      String      @unique @default(cuid()) // For secure guest access to the order status page
-
-  items            OrderItem[]
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique // Human-friendly order number
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestId         String? // For linking guest orders together
+  customerEmail   String
+  status          OrderStatus @default(DRAFT)
+  paymentStatus   PaymentStatus @default(PENDING)
+  total           Int // Store total in cents
+  shippingAddress Json
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  accessToken     String      @unique @default(cuid()) // For secure guest access
+  items           OrderItem[]
+  payments        Payment[]
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
+  id        String         @id @default(cuid())
   orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
-  
   quantity  Int
-  price     Int    // Store price at time of purchase, in cents
-  name      String // Store product name at time of purchase
+  price     Int // Price at time of purchase
+  name      String // Name at time of purchase
+}
+
+// New model to track individual payment attempts
+model Payment {
+  id           String        @id @default(cuid())
+  orderId      String
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider     String // e.g., "paymob"
+  providerRef  String?       @unique // The transaction ID from Paymob
+  amount       Int
+  status       PaymentStatus
+  errorCode    String?
+  errorMessage String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// New model for guest account upgrade invitations
+model GuestUpgradeInvite {
+  id        String   @id @default(cuid())
+  orderId   String   @unique // Link to the specific order that prompted the invite
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
 }
