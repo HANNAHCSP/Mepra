@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 // We will create this server action next
-// import { issueUpgradeInviteAction } from "@/app/actions/orders"; 
+import { issueUpgradeInviteAction } from "@/app/actions/orders"; 
 
 interface UpgradeAccountCardProps {
   orderId: string;
@@ -19,18 +19,14 @@ export default function UpgradeAccountCard({ orderId, customerEmail }: UpgradeAc
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     startTransition(async () => {
-      // We will uncomment this when the action is created
-      // const result = await issueUpgradeInviteAction(orderId, customerEmail);
-      // if (result.success) {
-      //   toast.success("Check your email for a link to create your account!");
-      //   setIsSubmitted(true);
-      // } else {
-      //   toast.error(result.error || "Something went wrong. Please try again.");
-      // }
-      
-      // Placeholder logic for now:
-      toast.success("Check your email for a link to create your account!");
-      setIsSubmitted(true);
+      // This is no longer placeholder logic
+      const result = await issueUpgradeInviteAction(orderId, customerEmail);
+      if (result.success) {
+        toast.success("Check your email for a link to create your account!");
+        setIsSubmitted(true);
+      } else {
+        toast.error(result.error || "Something went wrong. Please try again.");
+      }
     });
   };
 

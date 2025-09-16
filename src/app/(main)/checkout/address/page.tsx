@@ -1,7 +1,8 @@
 // src/app/(main)/checkout/address/page.tsx
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { saveShippingAddress } from '@/app/actions/checkout';
-import { ShippingAddressSchema } from '@/lib/zod-schemas'; // <-- Updated import
+import { ShippingAddressSchema } from '@/lib/zod-schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -27,7 +28,7 @@ function SubmitButton() {
 }
 
 export default function AddressPage() {
-  const [state, formAction] = useFormState(saveShippingAddress, {
+  const [state, formAction] = useActionState(saveShippingAddress, {
     message: '',
     success: false,
   });
@@ -45,7 +46,7 @@ export default function AddressPage() {
       address: '',
       apartment: '',
       city: '',
-      country: 'Italy', // Default value
+      country: 'Egypt', // Default value
       zipCode: '',
       phone: '',
     },

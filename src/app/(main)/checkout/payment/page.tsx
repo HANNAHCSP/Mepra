@@ -1,40 +1,38 @@
 // src/app/(main)/checkout/payment/page.tsx
-import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
+import { createOrder } from '@/app/actions/orders';
+import { getPaymobAuthToken, createPaymobOrder, getPaymobPaymentKey } from '@/lib/paymob.actions';
+import { ShippingAddressSchema } from '@/lib/zod-schemas';
+import PaymentForm from './payment-form';
 
-export default function PaymentPage() {
-  return (
-     <div>
-        <nav aria-label="Breadcrumb">
-            <ol role="list" className="flex items-center space-x-2 text-sm">
-            <li>
-                <Link href="/checkout/address" className="text-gray-500 hover:text-gray-700">Address</Link>
-            </li>
-            <li>
-                <ChevronRight className="h-5 w-5 text-gray-300" />
-            </li>
-            <li>
-                <Link href="/checkout/shipping" className="text-gray-500 hover:text-gray-700">Shipping</Link>
-            </li>
-             <li>
-                <ChevronRight className="h-5 w-5 text-gray-300" />
-            </li>
-            <li>
-                <span className="font-medium text-indigo-600">Payment</span>
-            </li>
-            </ol>
-        </nav>
-        <div className="mt-8 rounded-md border border-dashed border-gray-300 p-8 text-center">
-             <p className="text-gray-500">Payment provider form (e.g., Stripe) will go here.</p>
-        </div>
-         <div className="mt-10 border-t border-gray-200 pt-6">
-            <Link
-             href="/checkout/thank-you"
-             className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex justify-center"
-            >
-             Pay now
-            </Link>
+type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
+
+async function getPaymentToken() {
+  const order = await createOrder();
+  const billingData = order.shippingAddress as ShippingAddress;
+  
+  const authToken = await getPaymobAuthToken();
+   console.log(`✅ Sending my internal order ID to Paymob: ${order.id}`);
+  const paymobOrderId = await createPaymobOrder(authToken, order.total, order.id);
+  const paymentToken = await getPaymobPaymentKey(authToken, order.total, paymobOrderId, billingData);
+  
+  return paymentToken;
+}
+
+export default async function PaymentPage() {
+  try {
+    const paymentToken = await getPaymentToken();
+    const iframeId = process.env.PAYMOB_IFRAME_ID;
+
+    return (
+      <div>
+        <h1 className="text-xl font-semibold mb-4">Complete Your Payment</h1>
+        <PaymentForm paymentToken={paymentToken} iframeId={iframeId} />
       </div>
-    </div>
-  )
+    );
+  } catch (error) {
+    console.error("Failed to prepare payment:", error);
+    redirect('/cart?error=payment_setup_failed');
+  }
 }
