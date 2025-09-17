@@ -10,26 +10,28 @@ import { addHours } from 'date-fns';
 import crypto from 'crypto';
 import { decrementInventory } from './inventory'; // Import inventory action
 import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from '@/lib/email'; // Import email actions
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-// ... (createOrder function remains the same)
 export async function createOrder() {
-  const cookieStore = await cookies();
+  const cookieStore =await cookies();
   const cart = await getCart();
   const addressCookie = cookieStore.get('shippingAddress')?.value;
+  const session = await getServerSession(authOptions);
 
-  if (!cart || !addressCookie) {
+  if (!cart || cart.items.length === 0 || !addressCookie) {
     throw new Error('Cart or shipping address not found.');
   }
-
+  
   const shippingAddress = ShippingAddressSchema.parse(JSON.parse(addressCookie));
   const total = cart.items.reduce((sum, item) => sum + item.quantity * item.variant.price, 0);
 
-  // A simple way to generate a unique, human-readable order number
   const orderNumber = `MEPRA-${Date.now()}`;
 
   const order = await prisma.order.create({
     data: {
       orderNumber,
+      userId: session?.user?.id, // Link to user if logged in
       customerEmail: shippingAddress.email,
       total,
       shippingAddress: shippingAddress,
@@ -58,14 +60,13 @@ export async function finalizeOrder(
   return await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
-      include: { payments: true, items: true }, // Include items for inventory
+      include: { payments: true, items: true },
     });
 
     if (!order) {
       throw new Error(`Order with ID ${orderId} not found.`);
     }
 
-    // Idempotency check: if this transaction was already processed, do nothing.
     const existingPayment = order.payments.find(
       (p) => p.providerRef === paymobTransactionId
     );
@@ -74,7 +75,6 @@ export async function finalizeOrder(
       return order;
     }
 
-    // Record the payment attempt
     await tx.payment.create({
       data: {
         orderId: order.id,
@@ -85,7 +85,6 @@ export async function finalizeOrder(
       },
     });
 
-    // If payment failed, we're done for this transaction.
     if (!isSuccess) {
       return await tx.order.update({
         where: { id: order.id },
@@ -93,30 +92,21 @@ export async function finalizeOrder(
       });
     }
 
-    // --- Post-Payment Success Logic ---
-    
-    // 1. Update order status
     const updatedOrder = await tx.order.update({
       where: { id: order.id },
       data: {
         status: OrderStatus.CONFIRMED,
         paymentStatus: PaymentStatus.CAPTURED,
       },
-      include: { items: true } // Ensure items are included in the returned object
+      include: { items: true }
     });
 
-    // 2. Decrement inventory
     await decrementInventory(updatedOrder.items);
 
-  
-
-    // 4. Send notifications (outside the transaction, after it commits)
-    // We do this after the transaction to ensure emails are only sent if everything succeeded.
     Promise.all([
         sendOrderConfirmationEmail(updatedOrder),
         notifyStaffOfNewOrder(updatedOrder)
     ]).catch(err => {
-        // Log error if email sending fails, but don't block the user response
         console.error(`Failed to send emails for order ${order.id}:`, err);
     });
 
@@ -124,7 +114,6 @@ export async function finalizeOrder(
   });
 }
 
-// ... (issueUpgradeInviteAction function remains the same)
 export async function issueUpgradeInviteAction(orderId: string, email: string) {
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });

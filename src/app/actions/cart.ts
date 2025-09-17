@@ -159,7 +159,7 @@ export async function decrementItem(itemId: string) {
 export async function clearCart(): Promise<void> {
   
   const session = await getServerSession(authOptions);
-  const cookieStore = await cookies();
+  const cookieStore =await cookies();
   const cartId = cookieStore.get("cartId")?.value;
 
   if (!cartId) {
@@ -185,8 +185,8 @@ export async function clearCart(): Promise<void> {
   cookieStore.delete('guestId');
   cookieStore.delete('shippingAddress');
   
-  // Revalidate paths to update UI across the app
-  revalidatePath('/cart');
-  revalidatePath('/'); // To update the cart count in the navbar
+  // // Revalidate paths to update UI across the app
+  // revalidatePath('/cart');
+  // revalidatePath('/'); // To update the cart count in the navbar
   console.log('Cart cookies cleared.');
 }

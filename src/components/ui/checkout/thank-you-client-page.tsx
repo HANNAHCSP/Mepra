@@ -1,7 +1,7 @@
 // src/components/ui/checkout/thank-you-client-page.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PostPurchaseAuthModal from './post-purchase-auth-modal';
 import { clearCart } from '@/app/actions/cart';
@@ -19,18 +19,19 @@ export default function ThankYouClientPage({
   customerEmail,
   isGuestOrder,
 }: ThankYouClientPageProps) {
-  
-  // This effect runs once on mount to clear the user's cart.
+  const [isModalOpen, setIsModalOpen] = useState(isGuestOrder);
+
   useEffect(() => {
+    // This server action clears only the cart cookies and DB entry if necessary.
     clearCart();
-  }, []); // Empty dependency array ensures it runs only once.
+  }, []); // Empty dependency array ensures it runs only once on mount.
 
   return (
     <>
       <div className="text-center p-8">
         <h1 className="text-2xl font-bold text-gray-900">Thank you for your order!</h1>
         <p className="mt-2 text-gray-600">
-          Your order #{orderNumber} has been placed. A confirmation has been sent to your email.
+          Your order #{orderNumber} has been placed and a confirmation has been sent to your email.
         </p>
         
         <div className="mt-8">
@@ -43,17 +44,10 @@ export default function ThankYouClientPage({
         </div>
       </div>
 
-      {/* The PostPurchaseAuthModal is already implemented correctly.
-        It handles the inline signup form which is a much better UX
-        than the email-based upgrade card. We will trigger it directly if it's a guest order.
-      */}
       {isGuestOrder && (
          <PostPurchaseAuthModal
-            isOpen={true} // We can default it to open for guests
-            onClose={() => {
-                // In a real app, you might want a state to control this,
-                // but for now, we'll just let the user navigate away.
-            }}
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
             orderId={orderId}
             customerEmail={customerEmail}
           />

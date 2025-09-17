@@ -1,3 +1,4 @@
+// src/app/api/payments/paymob/response/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { verifyPaymobResponseHMACRobust } from '@/lib/paymob';
 import { finalizeOrder } from '@/app/actions/orders';
@@ -5,7 +6,6 @@ import { finalizeOrder } from '@/app/actions/orders';
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   
-  // Get the base URL from environment variables for reliable redirects
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!appUrl) {
     console.error("FATAL: NEXT_PUBLIC_APP_URL environment variable is not set.");
@@ -33,15 +33,14 @@ export async function GET(req: NextRequest) {
         throw new Error("Order could not be finalized or found after payment.");
       }
       
-      // Construct the secure URL using the environment variable
-      const thankYouUrl = new URL(`/checkout/thank-you`, appUrl);
-      thankYouUrl.searchParams.set('orderId', finalOrder.id);
+      // Redirect to the new order confirmation page
+      const confirmationUrl = new URL(`/order-confirmation/${finalOrder.id}`, appUrl);
       
       if (!finalOrder.userId && finalOrder.accessToken) {
-        thankYouUrl.searchParams.set('token', finalOrder.accessToken);
+        confirmationUrl.searchParams.set('token', finalOrder.accessToken);
       }
       
-      return NextResponse.redirect(thankYouUrl);
+      return NextResponse.redirect(confirmationUrl);
     } else {
       await finalizeOrder(orderId, transactionId, false);
       return NextResponse.redirect(new URL('/cart?error=payment_failed', appUrl));
