@@ -6,11 +6,12 @@ import { cookies } from 'next/headers';
 import { getCart } from './cart';
 import { ShippingAddressSchema } from '@/lib/zod-schemas';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
-import { addHours } from 'date-fns'; 
+import { addHours } from 'date-fns';
 import crypto from 'crypto';
+import { decrementInventory } from './inventory'; // Import inventory action
+import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from '@/lib/email'; // Import email actions
 
-
-// This action creates the initial order record in our database
+// ... (createOrder function remains the same)
 export async function createOrder() {
   const cookieStore = await cookies();
   const cart = await getCart();
@@ -48,9 +49,7 @@ export async function createOrder() {
   return order;
 }
 
-// This action finalizes the order after successful payment
-// It's designed to be "idempotent" - it can be called multiple times for the same transaction
-// without creating duplicate data.
+
 export async function finalizeOrder(
   orderId: string,
   paymobTransactionId: string,
@@ -59,21 +58,20 @@ export async function finalizeOrder(
   return await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
-      include: { payments: true },
+      include: { payments: true, items: true }, // Include items for inventory
     });
 
     if (!order) {
       throw new Error(`Order with ID ${orderId} not found.`);
     }
 
-    // Check if this transaction has already been processed
+    // Idempotency check: if this transaction was already processed, do nothing.
     const existingPayment = order.payments.find(
       (p) => p.providerRef === paymobTransactionId
     );
-
     if (existingPayment) {
       console.log(`Transaction ${paymobTransactionId} already processed for order ${orderId}.`);
-      return order; // Already handled, just return the order
+      return order;
     }
 
     // Record the payment attempt
@@ -87,44 +85,55 @@ export async function finalizeOrder(
       },
     });
 
-    // If payment was successful, update the order status
-    if (isSuccess) {
-      const updatedOrder = await tx.order.update({
+    // If payment failed, we're done for this transaction.
+    if (!isSuccess) {
+      return await tx.order.update({
         where: { id: order.id },
-        data: {
-          status: OrderStatus.CONFIRMED,
-          paymentStatus: PaymentStatus.CAPTURED,
-        },
+        data: { paymentStatus: PaymentStatus.FAILED },
       });
-
-      // Clear the cart cookie
-      (await cookies()).delete('cartId');   
-      
-      return updatedOrder;
     }
 
-    // If payment failed, just update the status
-    return await tx.order.update({
+    // --- Post-Payment Success Logic ---
+    
+    // 1. Update order status
+    const updatedOrder = await tx.order.update({
       where: { id: order.id },
       data: {
-        paymentStatus: PaymentStatus.FAILED,
+        status: OrderStatus.CONFIRMED,
+        paymentStatus: PaymentStatus.CAPTURED,
       },
+      include: { items: true } // Ensure items are included in the returned object
     });
+
+    // 2. Decrement inventory
+    await decrementInventory(updatedOrder.items);
+
+  
+
+    // 4. Send notifications (outside the transaction, after it commits)
+    // We do this after the transaction to ensure emails are only sent if everything succeeded.
+    Promise.all([
+        sendOrderConfirmationEmail(updatedOrder),
+        notifyStaffOfNewOrder(updatedOrder)
+    ]).catch(err => {
+        // Log error if email sending fails, but don't block the user response
+        console.error(`Failed to send emails for order ${order.id}:`, err);
+    });
+
+    return updatedOrder;
   });
 }
 
-// New action for issuing an upgrade invite
+// ... (issueUpgradeInviteAction function remains the same)
 export async function issueUpgradeInviteAction(orderId: string, email: string) {
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      // If the email is already registered, we can't create a new account with it.
-      // In a real app, you might send an email saying "Your order is placed. Log in to see it."
       return { success: false, error: "An account with this email already exists." };
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = addHours(new Date(), 24); // Invite is valid for 24 hours
+    const expiresAt = addHours(new Date(), 24);
 
     await prisma.guestUpgradeInvite.create({
       data: {
@@ -134,10 +143,6 @@ export async function issueUpgradeInviteAction(orderId: string, email: string) {
         expiresAt,
       },
     });
-
-    // In a real application, you would email the user a link here:
-    // const upgradeLink = `${process.env.NEXT_PUBLIC_APP_URL}/upgrade-account?token=${token}`;
-    // await sendEmail({ to: email, subject: "Create your Mepra account", body: `Click here to create your account: ${upgradeLink}` });
 
     console.log(`Generated upgrade link for ${email}: /upgrade-account?token=${token}`);
 

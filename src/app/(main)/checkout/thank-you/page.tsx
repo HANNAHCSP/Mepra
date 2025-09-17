@@ -1,54 +1,60 @@
-// src/app/(main)/checkout/thank-you/page.tsx
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import UpgradeAccountCard from "@/components/ui/checkout/upgrade-account-card";
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { notFound } from 'next/navigation';
+import ThankYouClientPage from '@/components/ui/checkout/thank-you-client-page';
 
-async function getOrder(orderId: string) {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-  });
-  return order;
+// This line is essential. It forces Next.js to treat this page as dynamic.
+export const dynamic = 'force-dynamic';
+
+async function getOrderData(orderId: string, token?: string | null) {
+  const session = await getServerSession(authOptions);
+  
+  if (session?.user?.id) {
+    return prisma.order.findFirst({
+      where: { id: orderId, userId: session.user.id },
+      select: { id: true, orderNumber: true, userId: true, customerEmail: true }
+    });
+  }
+
+  if (token) {
+     return prisma.order.findFirst({
+      where: { id: orderId, accessToken: token },
+       select: { id: true, orderNumber: true, userId: true, customerEmail: true }
+    });
+  }
+
+  return null;
 }
 
 export default async function ThankYouPage({
   searchParams,
 }: {
-  searchParams: { orderId: string };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { orderId } = searchParams;
+  // Await the searchParams before accessing properties
+  const resolvedSearchParams = await searchParams;
+  
+  const orderId = typeof resolvedSearchParams.orderId === 'string' ? resolvedSearchParams.orderId : undefined;
+  const token = typeof resolvedSearchParams.token === 'string' ? resolvedSearchParams.token : undefined;
+  
   if (!orderId) {
     return notFound();
   }
 
-  const order = await getOrder(orderId);
+  const order = await getOrderData(orderId, token);
   if (!order) {
     return notFound();
   }
 
-  // A guest order is one that doesn't have a userId
   const isGuestOrder = !order.userId;
 
   return (
-    <div className="text-center">
-      <h1 className="text-2xl font-bold text-gray-900">Thank you for your order!</h1>
-      <p className="mt-2 text-gray-600">
-        Your order #{order.orderNumber} has been placed and a confirmation has been sent to your email.
-      </p>
-      
-      {/* Conditionally render the upgrade card for guest users */}
-      {isGuestOrder && (
-        <UpgradeAccountCard orderId={order.id} customerEmail={order.customerEmail} />
-      )}
-      
-      <div className="mt-8">
-        <Link 
-          href="/products" 
-          className="text-indigo-600 hover:text-indigo-500 font-medium"
-        >
-          Continue Shopping &rarr;
-        </Link>
-      </div>
-    </div>
+    <ThankYouClientPage
+      orderId={order.id}
+      orderNumber={order.orderNumber}
+      customerEmail={order.customerEmail}
+      isGuestOrder={isGuestOrder}
+    />
   );
 }

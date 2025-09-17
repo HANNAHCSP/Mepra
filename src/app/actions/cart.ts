@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { CartWithItems } from "@/types/cart";
+import { randomUUID } from 'crypto'; 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
 
 // Helper function to find a cart by ID
 async function findCartById(cartId: string) {
@@ -36,8 +40,11 @@ export async function getCart(): Promise<CartWithItems | null> {
 
 // Creates a new cart and sets the cookie
 export async function createCart(): Promise<CartWithItems> {
+
+ const guestId = randomUUID();
+
   const cart = await prisma.cart.create({
-    data: {},
+    data: {guestId: guestId, },
     include: {
       items: {
         include: {
@@ -46,7 +53,14 @@ export async function createCart(): Promise<CartWithItems> {
       },
     },
   });
-  (await cookies()).set("cartId", cart.id, {
+  // Store both cartId and the new guestId in cookies
+  const cookieStore = await cookies();
+  cookieStore.set("cartId", cart.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+   cookieStore.set("guestId", guestId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -140,4 +154,39 @@ export async function decrementItem(itemId: string) {
     });
   }
   revalidatePath("/cart");
+}
+
+export async function clearCart(): Promise<void> {
+  
+  const session = await getServerSession(authOptions);
+  const cookieStore = await cookies();
+  const cartId = cookieStore.get("cartId")?.value;
+
+  if (!cartId) {
+    return; // No cart to clear
+  }
+
+  // If the user is logged in, their cart is in the database. Delete it.
+  if (session?.user?.id) {
+    try {
+      await prisma.cart.delete({
+        where: { id: cartId, userId: session.user.id },
+      });
+      console.log(`Cleared cart ${cartId} for user ${session.user.id}.`);
+    } catch (error) {
+      // It's possible the cart was already deleted or doesn't match the user.
+      // We can safely ignore this error.
+      console.log(`Could not find cart ${cartId} to delete for user ${session.user.id}. It may have already been cleared.`);
+    }
+  }
+  
+  // For both logged-in users and guests, we must clear the cookies.
+  cookieStore.delete('cartId');
+  cookieStore.delete('guestId');
+  cookieStore.delete('shippingAddress');
+  
+  // Revalidate paths to update UI across the app
+  revalidatePath('/cart');
+  revalidatePath('/'); // To update the cart count in the navbar
+  console.log('Cart cookies cleared.');
 }
