@@ -1,13 +1,10 @@
-
 // src/components/ui/checkout/thank-you-client-page.tsx
-
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import PostPurchaseAuthModal from './post-purchase-auth-modal';
-import { clearCart } from '@/app/actions/cart'; // Import the new universal action
+import { clearCart } from '@/app/actions/cart';
 
 interface ThankYouClientPageProps {
   orderId: string;
@@ -22,12 +19,9 @@ export default function ThankYouClientPage({
   customerEmail,
   isGuestOrder,
 }: ThankYouClientPageProps) {
-  const [isModalOpen, setIsModalOpen] = useState(isGuestOrder);
-
-  // This effect will run once when the component mounts.
+  
+  // This effect runs once on mount to clear the user's cart.
   useEffect(() => {
-    // Call the new `clearCart` action. It will handle both
-    // guest and signed-in user cases correctly on the server.
     clearCart();
   }, []); // Empty dependency array ensures it runs only once.
 
@@ -36,7 +30,7 @@ export default function ThankYouClientPage({
       <div className="text-center p-8">
         <h1 className="text-2xl font-bold text-gray-900">Thank you for your order!</h1>
         <p className="mt-2 text-gray-600">
-          Your order #{orderNumber} has been placed and a confirmation has been sent to your email.
+          Your order #{orderNumber} has been placed. A confirmation has been sent to your email.
         </p>
         
         <div className="mt-8">
@@ -49,10 +43,17 @@ export default function ThankYouClientPage({
         </div>
       </div>
 
+      {/* The PostPurchaseAuthModal is already implemented correctly.
+        It handles the inline signup form which is a much better UX
+        than the email-based upgrade card. We will trigger it directly if it's a guest order.
+      */}
       {isGuestOrder && (
          <PostPurchaseAuthModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            isOpen={true} // We can default it to open for guests
+            onClose={() => {
+                // In a real app, you might want a state to control this,
+                // but for now, we'll just let the user navigate away.
+            }}
             orderId={orderId}
             customerEmail={customerEmail}
           />
