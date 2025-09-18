@@ -10,6 +10,16 @@ export default withAuth(
     const { token } = req.nextauth;
     const { pathname } = req.nextUrl;
 
+    // Allow Paymob webhook requests to bypass authentication
+    if (pathname.startsWith("/api/webhook")) {
+      const response = NextResponse.next();
+      // Add CORS headers for Localtunnel
+      response.headers.set("Access-Control-Allow-Origin", "https://mypaymob.loca.lt");
+      response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+      response.headers.set("Access-Control-Allow-Headers", "Content-Type, x-paymob-signature");
+      return response;
+    }
+
     // If user is admin, allow access to /admin routes
     if (pathname.startsWith("/admin") && token?.role === "admin") {
       return NextResponse.next();
