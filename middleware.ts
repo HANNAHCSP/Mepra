@@ -28,7 +28,7 @@ export default withAuth(
         const { pathname } = req.nextUrl;
         
         // Define routes that require authentication
-        const protectedRoutes = ["/account"];
+        const protectedRoutes = ["/account", "/wishlist"];
         
         // Admin routes are a special case of protected routes
         if (pathname.startsWith("/admin")) {

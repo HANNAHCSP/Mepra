@@ -16,9 +16,9 @@ enum Role {
 }
 
 enum OrderStatus {
-  DRAFT // Order created, but not yet placed (e.g., during checkout)
-  PENDING // Order placed, awaiting payment confirmation
-  CONFIRMED // Payment confirmed, ready for fulfillment
+  DRAFT
+  PENDING
+  CONFIRMED
   SHIPPED
   DELIVERED
   CANCELED
@@ -34,20 +34,21 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
 }
 
-// AUTH MODELS (NextAuth - mostly unchanged)
+// AUTH MODELS
 model User {
-  id        String    @id @default(cuid())
+  id        String     @id @default(cuid())
   name      String?
-  email     String    @unique
-  role      Role      @default(user)
+  email     String     @unique
+  role      Role       @default(user)
   password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   addresses Address[]
   orders    Order[]
   cart      Cart?
   accounts  Account[]
   sessions  Session[]
+  wishlist  Wishlist? // Relation to Wishlist
 }
 
 model Account {
@@ -86,14 +87,15 @@ model VerificationToken {
 
 // E-COMMERCE MODELS
 model Product {
-  id          String         @id @default(cuid())
-  name        String
-  description String         @db.Text
-  handle      String         @unique
-  imageUrl    String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  variants    ProductVariant[]
+  id            String         @id @default(cuid())
+  name          String
+  description   String         @db.Text
+  handle        String         @unique
+  imageUrl      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  variants      ProductVariant[]
+  wishlistItems WishlistItem[] // Relation to WishlistItem
 }
 
 model ProductVariant {
@@ -101,9 +103,9 @@ model ProductVariant {
   productId  String
   product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   sku        String?    @unique
-  price      Int // Store price in cents
+  price      Int
   stock      Int        @default(0)
-  attributes Json? // e.g., {"size": "M", "color": "Blue"}
+  attributes Json?
   cartItems  CartItem[]
   orderItems OrderItem[]
 }
@@ -120,7 +122,6 @@ model Address {
   isDefault Boolean @default(false)
 }
 
-// CART (unchanged)
 model Cart {
   id        String     @id @default(cuid())
   userId    String?    @unique
@@ -142,21 +143,21 @@ model CartItem {
   @@unique([cartId, variantId])
 }
 
-// ORDER & PAYMENT (Significantly updated)
+// ORDER & PAYMENT
 model Order {
   id              String      @id @default(cuid())
-  orderNumber     String      @unique // Human-friendly order number
+  orderNumber     String      @unique
   userId          String?
   user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  guestId         String? // For linking guest orders together
+  guestId         String?
   customerEmail   String
   status          OrderStatus @default(DRAFT)
   paymentStatus   PaymentStatus @default(PENDING)
-  total           Int // Store total in cents
+  total           Int
   shippingAddress Json
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
-  accessToken     String      @unique @default(cuid()) // For secure guest access
+  accessToken     String      @unique @default(cuid())
   items           OrderItem[]
   payments        Payment[]
 }
@@ -168,17 +169,16 @@ model OrderItem {
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
   quantity  Int
-  price     Int // Price at time of purchase
-  name      String // Name at time of purchase
+  price     Int
+  name      String
 }
 
-// New model to track individual payment attempts
 model Payment {
   id           String        @id @default(cuid())
   orderId      String
   order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider     String // e.g., "paymob"
-  providerRef  String?       @unique // The transaction ID from Paymob
+  provider     String
+  providerRef  String?       @unique
   amount       Int
   status       PaymentStatus
   errorCode    String?
@@ -187,12 +187,25 @@ model Payment {
   updatedAt    DateTime      @updatedAt
 }
 
-// New model for guest account upgrade invitations
-model GuestUpgradeInvite {
-  id        String   @id @default(cuid())
-  orderId   String   @unique // Link to the specific order that prompted the invite
-  email     String
-  token     String   @unique
-  expiresAt DateTime
-  usedAt    DateTime?
+// --- NEW WISHLIST MODELS ---
+model Wishlist {
+  id        String        @id @default(cuid())
+  userId    String        @unique
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+}
+
+

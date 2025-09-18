@@ -1,4 +1,4 @@
-// src/lib/schemas.ts
+// src/lib/zod-schemas.ts
 import { z } from 'zod';
 
 // Define the schema for the shipping address
@@ -9,6 +9,7 @@ export const ShippingAddressSchema = z.object({
   address: z.string().min(1, "Address is required."),
   apartment: z.string().optional(),
   city: z.string().min(1, "City is required."),
+  state: z.string().min(1, "State/Province is required."), // Added this field
   country: z.string().min(1, "Country is required."),
   zipCode: z.string().min(1, "ZIP code is required."),
   phone: z.string().optional(),

@@ -1,10 +1,10 @@
-// ... (imports and schema definitions remain the same)
+// src/app/actions/auth.ts
 'use server';
 import { prisma } from '@/lib/prisma';
 import { hash } from 'bcryptjs';
 import { z } from 'zod';
+import { ShippingAddressSchema } from '@/lib/zod-schemas';
 
-// ...
 const CreateAccountSchema = z.object({
   name: z.string().trim().min(2, { message: 'Name must be at least 2 characters.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
@@ -26,7 +26,6 @@ export async function createAccountFromGuestOrder(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  // ... (parsing and initial checks remain the same)
   const parsed = CreateAccountSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!parsed.success) {
@@ -55,7 +54,9 @@ export async function createAccountFromGuestOrder(
         message: 'An account with this email already exists. Please sign in.',
       };
     }
+
     const hashedPassword = await hash(password, 12);
+    const shippingAddress = ShippingAddressSchema.parse(order.shippingAddress);
 
     await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
@@ -66,9 +67,7 @@ export async function createAccountFromGuestOrder(
         },
       });
 
-      // --- START of CHANGES ---
-      // Atomically link all past guest orders with this email to the new user.
-      // We ONLY update the userId. We do NOT touch the accessToken, which solves the unique constraint error.
+      // Link all past guest orders with this email to the new user.
       await tx.order.updateMany({
         where: {
           customerEmail: customerEmail,
@@ -78,7 +77,19 @@ export async function createAccountFromGuestOrder(
           userId: newUser.id,
         },
       });
-      // --- END of CHANGES ---
+      
+      // Save the shipping address from the order to the user's profile
+      await tx.address.create({
+        data: {
+          userId: newUser.id,
+          street: shippingAddress.address,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          zipCode: shippingAddress.zipCode,
+          country: shippingAddress.country,
+          isDefault: true,
+        }
+      });
     });
     
     return { success: true, message: 'Account created successfully! Signing you in...' };
