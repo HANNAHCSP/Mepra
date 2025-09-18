@@ -34,6 +34,13 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
 }
 
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
 // AUTH MODELS
 model User {
   id        String     @id @default(cuid())
@@ -48,7 +55,8 @@ model User {
   cart      Cart?
   accounts  Account[]
   sessions  Session[]
-  wishlist  Wishlist? // Relation to Wishlist
+  wishlist  Wishlist?
+  refunds   Refund[] // Relation to refunds initiated by the user
 }
 
 model Account {
@@ -145,21 +153,22 @@ model CartItem {
 
 // ORDER & PAYMENT
 model Order {
-  id              String      @id @default(cuid())
-  orderNumber     String      @unique
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
   userId          String?
-  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   guestId         String?
   customerEmail   String
-  status          OrderStatus @default(DRAFT)
+  status          OrderStatus   @default(DRAFT)
   paymentStatus   PaymentStatus @default(PENDING)
   total           Int
   shippingAddress Json
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  accessToken     String      @unique @default(cuid())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  accessToken     String        @unique @default(cuid())
   items           OrderItem[]
   payments        Payment[]
+  refunds         Refund[] // Relation to refunds
 }
 
 model OrderItem {
@@ -174,27 +183,46 @@ model OrderItem {
 }
 
 model Payment {
-  id           String        @id @default(cuid())
-  orderId      String
-  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider     String
-  providerRef  String?       @unique
-  amount       Int
-  status       PaymentStatus
-  errorCode    String?
-  errorMessage String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                  String        @id @default(cuid())
+  orderId             String
+  order               Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider            String
+  providerRef         String?       @unique
+  amount              Int
+  status              PaymentStatus
+  refundedAmountCents Int           @default(0) // New field to track refunded amount
+  errorCode           String?
+  errorMessage        String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  refunds             Refund[] // Relation to refunds
 }
 
-// --- NEW WISHLIST MODELS ---
+model Refund {
+  id                String       @id @default(cuid())
+  orderId           String
+  order             Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paymentId         String
+  payment           Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amountCents       Int
+  reason            String?
+  status            RefundStatus @default(REQUESTED)
+  providerRef       String?      @unique
+  requestedByUserId String?
+  requestedByUser   User?        @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  requestedByRole   Role
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt // <-- FIX: Added @updatedAt
+}
+
+// --- WISHLIST MODELS ---
 model Wishlist {
-  id        String        @id @default(cuid())
-  userId    String        @unique
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String         @id @default(cuid())
+  userId    String         @unique
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     WishlistItem[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 }
 
 model WishlistItem {
@@ -207,5 +235,3 @@ model WishlistItem {
 
   @@unique([wishlistId, productId])
 }
-
-
