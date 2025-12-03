@@ -12,10 +12,13 @@ import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from "@/lib/email";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+import { getShippingOptions } from "@/lib/shipping-rates";
+
 export async function createOrder() {
   const cookieStore = await cookies();
   const cart = await getCart();
   const addressCookie = cookieStore.get("shippingAddress")?.value;
+  const shippingMethodId = cookieStore.get("shippingMethod")?.value || "standard"; // Get Method
   const session = await getServerSession(authOptions);
 
   if (!cart || cart.items.length === 0) {
@@ -26,13 +29,29 @@ export async function createOrder() {
     throw new Error("Shipping address not found.");
   }
 
+  // 1. Validate Stock
   const stockCheck = await validateStock(cart.id);
   if (!stockCheck.valid) {
     throw new Error(stockCheck.errors.join(" "));
   }
 
+  // 2. Parse Address
   const shippingAddress = ShippingAddressSchema.parse(JSON.parse(addressCookie));
-  const total = cart.items.reduce((sum, item) => sum + item.quantity * item.variant.price, 0);
+
+  // 3. Calculate Products Total
+  const productsTotal = cart.items.reduce(
+    (sum, item) => sum + item.quantity * item.variant.price,
+    0
+  );
+
+  // 4. Calculate Shipping Cost (Server-Side)
+  // We re-calculate based on the address state to prevent tampering
+  const availableOptions = getShippingOptions(shippingAddress.state);
+  const selectedOption =
+    availableOptions.find((opt) => opt.id === shippingMethodId) || availableOptions[0];
+
+  // 5. Final Total
+  const total = productsTotal + selectedOption.priceCents;
 
   const orderNumber = `MEPRA-${Date.now()}`;
 
@@ -41,8 +60,12 @@ export async function createOrder() {
       orderNumber,
       userId: session?.user?.id,
       customerEmail: shippingAddress.email,
-      total,
-      shippingAddress: shippingAddress,
+      total, // This now includes shipping!
+      shippingAddress: {
+        ...shippingAddress,
+        shippingMethod: selectedOption.name, // Store the method name in JSON for reference
+        shippingCost: selectedOption.priceCents,
+      },
       status: OrderStatus.DRAFT,
       paymentStatus: PaymentStatus.PENDING,
       items: {

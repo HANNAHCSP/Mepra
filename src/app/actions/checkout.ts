@@ -1,14 +1,16 @@
-// src/app/actions/checkout.ts
-'use server'
+"use server";
 
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { ShippingAddressSchema, type ShippingAddressFormState } from '@/lib/zod-schemas';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ShippingAddressSchema, type ShippingAddressFormState } from "@/lib/zod-schemas";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
-// This action handles the form for NEW addresses
+// --- EXISTING ADDRESS ACTIONS (Keep these) ---
+
 export async function saveShippingAddress(
   prevState: ShippingAddressFormState,
   formData: FormData
@@ -25,11 +27,11 @@ export async function saveShippingAddress(
 
   try {
     const addressJson = JSON.stringify(parsed.data);
-   (await cookies()).set('shippingAddress', addressJson, {
+    (await cookies()).set("shippingAddress", addressJson, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
     });
   } catch (error) {
     return {
@@ -38,54 +40,92 @@ export async function saveShippingAddress(
     };
   }
 
-  redirect('/checkout/shipping');
+  redirect("/checkout/shipping");
 }
 
-// This NEW action handles selecting an EXISTING address
 export async function selectSavedAddress(addressId: string) {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
-        throw new Error('You must be logged in to perform this action.');
-    }
+  if (!session?.user?.id) {
+    throw new Error("You must be logged in to perform this action.");
+  }
 
-    const address = await prisma.address.findFirst({
-        where: {
-            id: addressId,
-            userId: session.user.id, // Security check
-        },
+  const address = await prisma.address.findFirst({
+    where: {
+      id: addressId,
+      userId: session.user.id,
+    },
+  });
+
+  if (!address) {
+    throw new Error("Address not found or you do not have permission to use it.");
+  }
+
+  const shippingAddressPayload = {
+    email: session.user.email,
+    firstName: session.user.name?.split(" ")[0] || "",
+    lastName: session.user.name?.split(" ").slice(1).join(" ") || "",
+    address: address.street,
+    city: address.city,
+    state: address.state,
+    zipCode: address.zipCode,
+    country: address.country,
+  };
+
+  try {
+    const addressJson = JSON.stringify(shippingAddressPayload);
+    (await cookies()).set("shippingAddress", addressJson, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
     });
+  } catch (error) {
+    console.error("Failed to set shipping address cookie:", error);
+    throw new Error("Could not process the selected address.");
+  }
 
-    if (!address) {
-        throw new Error('Address not found or you do not have permission to use it.');
-    }
-    
-    // Create an object that matches the ShippingAddressSchema structure
-    const shippingAddressPayload = {
-        email: session.user.email,
-        firstName: session.user.name?.split(' ')[0] || '',
-        lastName: session.user.name?.split(' ').slice(1).join(' ') || '',
-        address: address.street,
-        city: address.city,
-        state: address.state,
-        zipCode: address.zipCode,
-        country: address.country,
-        // Optional fields can be omitted if not present
-    };
+  redirect("/checkout/shipping");
+}
 
-    try {
-        const addressJson = JSON.stringify(shippingAddressPayload);
-        (await cookies()).set('shippingAddress', addressJson, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-        });
-    } catch (error) {
-        // Handle potential errors, though stringify is unlikely to fail here
-        console.error("Failed to set shipping address cookie:", error);
-        throw new Error('Could not process the selected address.');
-    }
+// --- UPDATED SHIPPING METHOD ACTIONS ---
 
-    redirect('/checkout/shipping');
+const ShippingMethodSchema = z.object({
+  methodId: z.enum(["standard", "express"]),
+});
+
+// 1. Action for "Clicking" the radio button (Updates UI without redirect)
+export async function updateShippingMethod(methodId: string) {
+  const parsed = ShippingMethodSchema.safeParse({ methodId });
+
+  if (parsed.success) {
+    (await cookies()).set("shippingMethod", parsed.data.methodId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+    // This tells the Layout to re-fetch cookies and update the Summary price
+    revalidatePath("/checkout");
+  }
+}
+
+// 2. Action for "Continue" button (Redirects to next step)
+export async function saveShippingMethodAndContinue(formData: FormData) {
+  const parsed = ShippingMethodSchema.safeParse({
+    methodId: formData.get("methodId"),
+  });
+
+  if (!parsed.success) {
+    throw new Error("Invalid shipping method selected.");
+  }
+
+  (await cookies()).set("shippingMethod", parsed.data.methodId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  redirect("/checkout/payment");
 }
