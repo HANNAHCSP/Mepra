@@ -23,6 +23,7 @@ enum OrderStatus {
   DELIVERED
   CANCELED
   REFUNDED
+  RETURN_REQUESTED // Added for refund logic
 }
 
 enum PaymentStatus {
@@ -31,7 +32,7 @@ enum PaymentStatus {
   CAPTURED
   FAILED
   REFUNDED
-  PARTIALLY_REFUNDED // New
+  PARTIALLY_REFUNDED
 }
 
 enum RefundStatus {
@@ -56,7 +57,7 @@ model User {
   accounts  Account[]
   sessions  Session[]
   wishlist  Wishlist?
-  refunds   Refund[] // Relation to refunds initiated by the user
+  refunds   Refund[]
 }
 
 model Account {
@@ -168,7 +169,7 @@ model Order {
   accessToken     String        @unique @default(cuid())
   items           OrderItem[]
   payments        Payment[]
-  refunds         Refund[] // Relation to refunds
+  refunds         Refund[]
 }
 
 model OrderItem {
@@ -190,12 +191,12 @@ model Payment {
   providerRef         String?       @unique
   amount              Int
   status              PaymentStatus
-  refundedAmountCents Int           @default(0) // Track refunded amount
+  refundedAmountCents Int           @default(0)
   errorCode           String?
   errorMessage        String?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
-  refunds             Refund[] // Relation to refunds
+  refunds             Refund[]
 }
 
 model Refund {
@@ -234,8 +235,6 @@ model WishlistItem {
 
   @@unique([wishlistId, productId])
 }
-
-
 
 model GuestUpgradeInvite {
   id        String   @id @default(cuid())

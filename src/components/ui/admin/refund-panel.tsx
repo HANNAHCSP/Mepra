@@ -46,7 +46,7 @@ export default function RefundPanel({ order }: RefundPanelProps) {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
             </span>
           </div>
-          
+
           <div className="divide-y divide-[#A9927D]/10">
             {pendingRefunds.map((refund) => (
               <div key={refund.id} className="p-6 bg-[#A9927D]/5">
@@ -65,7 +65,7 @@ export default function RefundPanel({ order }: RefundPanelProps) {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="bg-white p-4 rounded-lg border border-border/40 mb-6">
                   <p className="text-sm text-foreground/80 italic">
                     &quot;{refund.reason || "No specific reason provided."}&quot;
@@ -78,7 +78,11 @@ export default function RefundPanel({ order }: RefundPanelProps) {
                     disabled={isPending}
                     className="flex-1 bg-[#5E503F] hover:bg-[#4A3F32] text-white shadow-md hover:shadow-lg transition-all"
                   >
-                    {isPending ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                    {isPending ? (
+                      <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Check className="w-4 h-4 mr-2" />
+                    )}
                     Approve Request
                   </Button>
                   <Button
@@ -105,9 +109,14 @@ export default function RefundPanel({ order }: RefundPanelProps) {
           </div>
           <ul className="divide-y divide-border/40">
             {processedRefunds.map((refund) => (
-              <li key={refund.id} className="p-4 flex items-center justify-between hover:bg-accent/10 transition-colors">
+              <li
+                key={refund.id}
+                className="p-4 flex items-center justify-between hover:bg-accent/10 transition-colors"
+              >
                 <div className="flex flex-col">
-                  <span className="font-medium text-foreground">${(refund.amountCents / 100).toFixed(2)}</span>
+                  <span className="font-medium text-foreground">
+                    ${(refund.amountCents / 100).toFixed(2)}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     Processed on {new Date(refund.updatedAt).toLocaleDateString()}
                   </span>

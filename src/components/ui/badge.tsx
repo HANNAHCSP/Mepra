@@ -11,9 +11,10 @@ const badgeVariants = cva(
         PENDING: "border-secondary/20 bg-secondary/10 text-secondary hover:bg-secondary/20",
         CONFIRMED: "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10",
         SHIPPED: "border-[#D4C5B8] bg-[#D4C5B8]/20 text-[#6B5E4F]",
-        DELIVERED: "border-green-800/10 bg-green-50 text-green-900", // Keep accessible green but muted
+        DELIVERED: "border-green-800/10 bg-green-50 text-green-900",
         CANCELED: "border-muted-foreground/20 bg-muted/50 text-muted-foreground",
         REFUNDED: "border-burgundy/20 bg-burgundy/5 text-burgundy",
+        RETURN_REQUESTED: "border-amber-500/20 bg-amber-50 text-amber-700", // New status style
         DRAFT: "border-transparent bg-muted text-muted-foreground",
       },
     },
@@ -30,7 +31,9 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 function Badge({ className, status, children, ...props }: BadgeProps) {
   return (
     <div className={cn(badgeVariants({ status }), className)} {...props}>
-      {children ? String(children).toLowerCase() : status.toLowerCase()}
+      {children
+        ? String(children).toLowerCase().replace("_", " ")
+        : status.toLowerCase().replace("_", " ")}
     </div>
   );
 }

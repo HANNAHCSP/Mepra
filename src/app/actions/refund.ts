@@ -65,22 +65,27 @@ export async function requestRefundAction(
       return { success: false, message: "Refund amount exceeds refundable balance." };
     }
 
-    await prisma.refund.create({
-      data: {
-        orderId,
-        paymentId: payment.id,
-        amountCents,
-        reason,
-        status: RefundStatus.REQUESTED,
-        requestedByUserId: session.user.id,
-      },
-    });
+    await prisma.$transaction([
+      prisma.refund.create({
+        data: {
+          orderId,
+          paymentId: payment.id,
+          amountCents,
+          reason,
+          status: RefundStatus.REQUESTED,
+          requestedByUserId: session.user.id,
+        },
+      }),
+      prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.RETURN_REQUESTED },
+      }),
+    ]);
 
-    // --- REVALIDATION: Ensure all relevant pages update ---
-    revalidatePath(`/account/orders/${order.orderNumber}`); // Customer View
-    revalidatePath(`/admin/orders/${order.id}`); // Admin Details View
-    revalidatePath("/admin/orders"); // Admin List View
-    revalidatePath("/admin"); // Admin Dashboard Stats
+    revalidatePath(`/account/orders/${order.orderNumber}`);
+    revalidatePath(`/admin/orders/${order.id}`);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin");
 
     return { success: true, message: "Refund request submitted successfully." };
   } catch (error) {
@@ -103,15 +108,21 @@ export async function processRefundAction(refundId: string, action: "approve" | 
     include: { payment: true },
   });
 
-  if (!refund || refund.status !== RefundStatus.REQUESTED) {
-    throw new Error("Refund not found or not in a processable state.");
+  if (!refund) {
+    throw new Error("Refund not found.");
   }
 
   if (action === "deny") {
-    await prisma.refund.update({
-      where: { id: refundId },
-      data: { status: RefundStatus.FAILED },
-    });
+    await prisma.$transaction([
+      prisma.refund.update({
+        where: { id: refundId },
+        data: { status: RefundStatus.FAILED },
+      }),
+      prisma.order.update({
+        where: { id: refund.orderId },
+        data: { status: OrderStatus.DELIVERED },
+      }),
+    ]);
   } else if (action === "approve") {
     if (!refund.payment.providerRef) {
       throw new Error("Payment transaction reference not found.");
@@ -119,99 +130,133 @@ export async function processRefundAction(refundId: string, action: "approve" | 
 
     const authToken = await getPaymobAuthToken();
 
-    // Call Paymob API to initiate refund
+    // 1. Call Paymob
     const paymobRefund = await createPaymobRefund(
       authToken,
       refund.payment.providerRef,
       refund.amountCents
     );
 
-    await prisma.refund.update({
+    // 2. Update DB - Check if webhook beat us to it
+    const currentRefund = await prisma.refund.findUnique({
       where: { id: refundId },
-      data: {
-        status: RefundStatus.PROCESSING,
-        providerRef: paymobRefund.id.toString(),
-      },
+      select: { status: true },
     });
+
+    if (currentRefund?.status === RefundStatus.REQUESTED) {
+      await prisma.refund.update({
+        where: { id: refundId },
+        data: {
+          status: RefundStatus.PROCESSING,
+          providerRef: paymobRefund.id.toString(),
+        },
+      });
+    } else {
+      // Just update the providerRef if it's missing (webhook might have set status but not this)
+      await prisma.refund.update({
+        where: { id: refundId },
+        data: {
+          providerRef: paymobRefund.id.toString(),
+        },
+      });
+    }
   }
 
-  // --- REVALIDATION: Update Admin Views Immediately ---
   revalidatePath(`/admin/orders/${refund.orderId}`);
   revalidatePath("/admin/orders");
   revalidatePath("/admin");
 }
 
 /**
- * Finalizes a refund after receiving a webhook confirmation from Paymob.
- * This action is idempotent and should only be called by the webhook handler.
+ * Helper to handle the case where Paymob sends a Payment Webhook with is_refunded=true.
  */
-export async function finalizeRefundAction(paymobRefundId: string, isSuccess: boolean) {
-  return await prisma.$transaction(async (tx) => {
-    // 1. Find the refund request by the provider's transaction ID
-    const refund = await tx.refund.findUnique({
-      where: { providerRef: paymobRefundId },
-      include: { payment: true, order: true },
-    });
+export async function processPaymentRefundUpdate(paymentProviderRef: string) {
+  // Find the payment and associated refund.
+  // We look for refunds that are PROCESSING or REQUESTED to fix the race condition.
+  const payment = await prisma.payment.findUnique({
+    where: { providerRef: paymentProviderRef },
+    include: {
+      refunds: {
+        where: {
+          status: { in: [RefundStatus.PROCESSING, RefundStatus.REQUESTED] },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+  });
 
-    // 2. Idempotency Check
-    if (!refund || refund.status !== RefundStatus.PROCESSING) {
-      console.warn(`Webhook for refund ${paymobRefundId} skipped: Not found or already processed.`);
+  if (!payment || payment.refunds.length === 0) {
+    console.log(`No pending refund found for payment ${paymentProviderRef}`);
+    return;
+  }
+
+  const refund = payment.refunds[0];
+
+  console.log(`Found pending refund ${refund.id} for payment ${paymentProviderRef}. Finalizing...`);
+
+  // Use internal ID to finalize since we found it via relation
+  await finalizeRefundAction(refund.id, true, true);
+}
+
+/**
+ * Finalizes a refund.
+ * @param lookupId - Either the Paymob Refund ID (providerRef) or our Internal Refund ID
+ * @param isSuccess - Whether the refund succeeded
+ * @param isInternalId - If true, lookupId is our DB ID. If false, it's Paymob's ID.
+ */
+export async function finalizeRefundAction(
+  lookupId: string,
+  isSuccess: boolean,
+  isInternalId: boolean = false
+) {
+  return await prisma.$transaction(async (tx) => {
+    // Use a const with conditional logic to satisfy TypeScript strict null checks
+    const refund = isInternalId
+      ? await tx.refund.findUnique({
+          where: { id: lookupId },
+          include: { payment: true, order: true },
+        })
+      : await tx.refund.findUnique({
+          where: { providerRef: lookupId },
+          include: { payment: true, order: true },
+        });
+
+    // TypeScript Check: Ensure 'refund' exists before proceeding
+    if (
+      !refund ||
+      (refund.status !== RefundStatus.PROCESSING && refund.status !== RefundStatus.REQUESTED)
+    ) {
+      console.warn(`Webhook for refund ${lookupId} skipped: Not found or already handled.`);
       return;
     }
 
-    // 3. Update the Refund record's status
     const updatedRefund = await tx.refund.update({
       where: { id: refund.id },
       data: { status: isSuccess ? RefundStatus.SUCCEEDED : RefundStatus.FAILED },
     });
 
-    // Extract customer name safely from shipping address to use in email
-    interface ShippingAddress {
-      firstName?: string;
-      lastName?: string;
-    }
-
-    const rawAddress =
-      typeof refund.order.shippingAddress === "string"
-        ? (JSON.parse(refund.order.shippingAddress) as ShippingAddress)
-        : (refund.order.shippingAddress as ShippingAddress);
-
-    const customerName = rawAddress?.firstName
-      ? `${rawAddress.firstName} ${rawAddress.lastName}`
-      : "Customer";
-
-    // 4. If the refund failed, we're done (just notify and return)
     if (!isSuccess) {
-      // Fix: Passing single object as expected by sendRefundStatusEmail
-      await sendRefundStatusEmail({
-        orderNumber: refund.order.orderNumber,
-        customerEmail: refund.order.customerEmail,
-        customerName: customerName,
-        amount: updatedRefund.amountCents,
-        status: updatedRefund.status,
+      await tx.order.update({
+        where: { id: refund.orderId },
+        data: { status: OrderStatus.DELIVERED },
       });
       return updatedRefund;
     }
 
-    // 5. If successful, update the original Payment record
     const updatedPayment = await tx.payment.update({
       where: { id: refund.paymentId },
       data: { refundedAmountCents: { increment: refund.amountCents } },
     });
 
-    // 6. Determine the new overall order payment status
     const newPaymentStatus =
       updatedPayment.refundedAmountCents >= updatedPayment.amount
         ? PaymentStatus.REFUNDED
         : PaymentStatus.PARTIALLY_REFUNDED;
 
-    // 7. Determine the new OrderStatus based on the final refunded amount
-    // Logic: If fully refunded, the order status becomes REFUNDED.
-    // If partially refunded, we keep the existing status (e.g. CONFIRMED).
     const newOrderStatus =
-      newPaymentStatus === PaymentStatus.REFUNDED ? OrderStatus.REFUNDED : refund.order.status;
+      newPaymentStatus === PaymentStatus.REFUNDED ? OrderStatus.REFUNDED : OrderStatus.DELIVERED;
 
-    // 8. Update the Order record
     await tx.order.update({
       where: { id: refund.orderId },
       data: {
@@ -220,8 +265,28 @@ export async function finalizeRefundAction(paymobRefundId: string, isSuccess: bo
       },
     });
 
-    // 9. Send notification
-    // Fix: Passing single object as expected by sendRefundStatusEmail
+    // Parse shipping address safely for the email
+    interface ShippingAddress {
+      firstName?: string;
+      lastName?: string;
+    }
+
+    // Safety check for JSON parsing
+    let rawAddress: ShippingAddress = {};
+    if (typeof refund.order.shippingAddress === "string") {
+      try {
+        rawAddress = JSON.parse(refund.order.shippingAddress);
+      } catch (e) {
+        console.error("Error parsing shipping address JSON", e);
+      }
+    } else {
+      rawAddress = refund.order.shippingAddress as ShippingAddress;
+    }
+
+    const customerName = rawAddress?.firstName
+      ? `${rawAddress.firstName} ${rawAddress.lastName}`
+      : "Customer";
+
     await sendRefundStatusEmail({
       orderNumber: refund.order.orderNumber,
       customerEmail: refund.order.customerEmail,
@@ -230,13 +295,13 @@ export async function finalizeRefundAction(paymobRefundId: string, isSuccess: bo
       status: updatedRefund.status,
     });
 
-    // --- REVALIDATION: Ensure the webhook triggers UI updates ---
+    // Revalidate paths using the non-null 'refund' object
     revalidatePath(`/account/orders/${refund.order.orderNumber}`);
     revalidatePath(`/admin/orders/${refund.orderId}`);
     revalidatePath("/admin/orders");
     revalidatePath("/admin");
 
-    console.log(`Successfully finalized refund ${refund.id} for order ${refund.orderId}`);
+    console.log(`Successfully finalized refund ${refund.id}`);
     return updatedRefund;
   });
 }
