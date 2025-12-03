@@ -1,28 +1,36 @@
-// src/app/actions/orders.ts
-'use server';
+"use server";
 
-import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
-import { getCart } from './cart';
-import { ShippingAddressSchema } from '@/lib/zod-schemas';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
-import { addHours } from 'date-fns';
-import crypto from 'crypto';
-import { decrementInventory } from './inventory'; // Import inventory action
-import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from '@/lib/email'; // Import email actions
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { getCart, validateStock } from "./cart";
+import { ShippingAddressSchema } from "@/lib/zod-schemas";
+import { OrderStatus, PaymentStatus } from "@prisma/client";
+import { addHours } from "date-fns";
+import crypto from "crypto";
+import { decrementInventory } from "./inventory";
+import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from "@/lib/email";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function createOrder() {
-  const cookieStore =await cookies();
+  const cookieStore = await cookies();
   const cart = await getCart();
-  const addressCookie = cookieStore.get('shippingAddress')?.value;
+  const addressCookie = cookieStore.get("shippingAddress")?.value;
   const session = await getServerSession(authOptions);
 
-  if (!cart || cart.items.length === 0 || !addressCookie) {
-    throw new Error('Cart or shipping address not found.');
+  if (!cart || cart.items.length === 0) {
+    throw new Error("Cart is empty.");
   }
-  
+
+  if (!addressCookie) {
+    throw new Error("Shipping address not found.");
+  }
+
+  const stockCheck = await validateStock(cart.id);
+  if (!stockCheck.valid) {
+    throw new Error(stockCheck.errors.join(" "));
+  }
+
   const shippingAddress = ShippingAddressSchema.parse(JSON.parse(addressCookie));
   const total = cart.items.reduce((sum, item) => sum + item.quantity * item.variant.price, 0);
 
@@ -31,7 +39,7 @@ export async function createOrder() {
   const order = await prisma.order.create({
     data: {
       orderNumber,
-      userId: session?.user?.id, // Link to user if logged in
+      userId: session?.user?.id,
       customerEmail: shippingAddress.email,
       total,
       shippingAddress: shippingAddress,
@@ -51,7 +59,6 @@ export async function createOrder() {
   return order;
 }
 
-
 export async function finalizeOrder(
   orderId: string,
   paymobTransactionId: string,
@@ -67,9 +74,7 @@ export async function finalizeOrder(
       throw new Error(`Order with ID ${orderId} not found.`);
     }
 
-    const existingPayment = order.payments.find(
-      (p) => p.providerRef === paymobTransactionId
-    );
+    const existingPayment = order.payments.find((p) => p.providerRef === paymobTransactionId);
     if (existingPayment) {
       console.log(`Transaction ${paymobTransactionId} already processed for order ${orderId}.`);
       return order;
@@ -78,7 +83,7 @@ export async function finalizeOrder(
     await tx.payment.create({
       data: {
         orderId: order.id,
-        provider: 'paymob',
+        provider: "paymob",
         providerRef: paymobTransactionId,
         amount: order.total,
         status: isSuccess ? PaymentStatus.CAPTURED : PaymentStatus.FAILED,
@@ -98,16 +103,16 @@ export async function finalizeOrder(
         status: OrderStatus.CONFIRMED,
         paymentStatus: PaymentStatus.CAPTURED,
       },
-      include: { items: true }
+      include: { items: true },
     });
 
     await decrementInventory(updatedOrder.items);
 
     Promise.all([
-        sendOrderConfirmationEmail(updatedOrder),
-        notifyStaffOfNewOrder(updatedOrder)
-    ]).catch(err => {
-        console.error(`Failed to send emails for order ${order.id}:`, err);
+      sendOrderConfirmationEmail(updatedOrder),
+      notifyStaffOfNewOrder(updatedOrder),
+    ]).catch((err) => {
+      console.error(`Failed to send emails for order ${order.id}:`, err);
     });
 
     return updatedOrder;
@@ -121,9 +126,11 @@ export async function issueUpgradeInviteAction(orderId: string, email: string) {
       return { success: false, error: "An account with this email already exists." };
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = addHours(new Date(), 24);
 
+    // Insert the invite using a parameterized raw query so we don't need
+    // to rely on a generated delegate or use an `any` cast.
     await prisma.guestUpgradeInvite.create({
       data: {
         orderId,

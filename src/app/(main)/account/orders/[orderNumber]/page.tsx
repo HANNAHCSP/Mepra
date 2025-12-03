@@ -1,22 +1,19 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { redirect, notFound } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
-import { z } from 'zod';
-import { ShippingAddressSchema } from '@/lib/zod-schemas';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect, notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
+import { ShippingAddressSchema } from "@/lib/zod-schemas";
+import RefundSection from "@/components/ui/account/refund-section"; // Updated import
 
 type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
 
-export default async function OrderDetailsPage({
-  params,
-}: {
-  params: { orderNumber: string };
-}) {
+export default async function OrderDetailsPage({ params }: { params: { orderNumber: string } }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect('/signin');
+    redirect("/signin");
   }
 
   // Use `findFirst` to query by a non-unique field securely.
@@ -28,12 +25,16 @@ export default async function OrderDetailsPage({
     include: {
       items: {
         include: {
-          variant: {
-            include: {
-              product: true,
-            },
-          },
+          variant: { include: { product: true } },
         },
+      },
+      payments: {
+        include: {
+          refunds: true,
+        },
+      },
+      refunds: {
+        orderBy: { createdAt: "desc" },
       },
     },
   });
@@ -49,8 +50,7 @@ export default async function OrderDetailsPage({
       <div>
         <h1 className="text-2xl font-bold">Order Details</h1>
         <p className="text-gray-500">
-          Order #{order.orderNumber} placed on{' '}
-          {new Date(order.createdAt).toLocaleDateString()}
+          Order #{order.orderNumber} placed on {new Date(order.createdAt).toLocaleDateString()}
         </p>
       </div>
 
@@ -76,9 +76,7 @@ export default async function OrderDetailsPage({
             </div>
             <div className="flex justify-between">
               <dt className="text-gray-600">Payment Status</dt>
-              <dd className="capitalize">
-                {order.paymentStatus.toLowerCase()}
-              </dd>
+              <dd className="capitalize">{order.paymentStatus.replace(/_/g, " ").toLowerCase()}</dd>
             </div>
             <div className="flex justify-between font-medium">
               <dt>Total</dt>
@@ -94,7 +92,7 @@ export default async function OrderDetailsPage({
           {order.items.map((item) => (
             <li key={item.id} className="flex items-center gap-4 p-4">
               <Image
-                src={item.variant.product.imageUrl ?? '/placeholder.svg'}
+                src={item.variant.product.imageUrl ?? "/placeholder.svg"}
                 alt={item.name}
                 width={64}
                 height={64}
@@ -102,17 +100,16 @@ export default async function OrderDetailsPage({
               />
               <div className="flex-grow">
                 <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-gray-500">
-                  Qty: {item.quantity}
-                </p>
+                <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
               </div>
-              <p className="text-sm font-medium">
-                ${(item.price / 100).toFixed(2)}
-              </p>
+              <p className="text-sm font-medium">${(item.price / 100).toFixed(2)}</p>
             </li>
           ))}
         </ul>
       </div>
+
+      {/* Render the unified refund section */}
+      <RefundSection order={order} />
     </div>
   );
 }

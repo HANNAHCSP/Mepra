@@ -1,17 +1,15 @@
-
 @import "tailwindcss";
-
 
 @plugin "tailwindcss-animate";
 
-/* your variant + theme + tokens stay the same */
-@custom-variant dark (&:is(.dark *));  /* ok in v4 */
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -20,11 +18,13 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -41,6 +41,10 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Custom Burgundy Utility */
+  --color-burgundy: var(--burgundy);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -48,75 +52,112 @@
 }
 
 :root {
+  /* YOUR PALETTE MAPPING */
+
+  /* Background: Cultured (#F2F4F3) */
+  --background: #f2f4f3;
+
+  /* Foreground/Text: Umber (#5E503F) - Replacing standard black */
+  --foreground: #5e503f;
+
+  /* Cards can be pure white to pop against the off-white background */
+  --card: #ffffff;
+  --card-foreground: #5e503f;
+
+  --popover: #ffffff;
+  --popover-foreground: #5e503f;
+
+  /* Primary: Umber (#5E503F) - Used for main buttons */
+  --primary: #5e503f;
+  --primary-foreground: #f2f4f3;
+
+  /* Secondary: Grullo (#A9927D) - Used for highlights/secondary buttons */
+  --secondary: #a9927d;
+  --secondary-foreground: #ffffff;
+
+  /* Muted: A softer version of Grullo for backgrounds */
+  --muted: #e6e4e1;
+  --muted-foreground: #a9927d;
+
+  /* Accent: Grullo (#A9927D) or Burgundy */
+  --accent: #f9f7f5;
+  --accent-foreground: #5e503f;
+
+  /* Destructive: Burgundy (#800020) - Using your requested burgundy shade */
+  --destructive: #800020;
+  --destructive-foreground: #ffffff;
+
+  /* Specific Burgundy Variable for custom use */
+  --burgundy: #800020;
+
+  /* Borders: Grullo (#A9927D) creates nice elegant dividers */
+  --border: #dcd6d0;
+  --input: #dcd6d0;
+  --ring: #a9927d;
+
+  /* Charts - Adjusted to fit palette */
+  --chart-1: #5e503f;
+  --chart-2: #a9927d;
+  --chart-3: #800020;
+  --chart-4: #d4c5b8;
+  --chart-5: #6b5e4f;
+
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* Sidebar variables (can mirror main theme) */
+  --sidebar: #f2f4f3;
+  --sidebar-foreground: #5e503f;
+  --sidebar-primary: #5e503f;
+  --sidebar-primary-foreground: #f2f4f3;
+  --sidebar-accent: #e6e4e1;
+  --sidebar-accent-foreground: #5e503f;
+  --sidebar-border: #dcd6d0;
+  --sidebar-ring: #a9927d;
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  /* Dark Mode Mapping (Optional - inverted values) */
+  --background: #2c251f; /* Very dark brown */
+  --foreground: #f2f4f3;
+  --card: #3a322a;
+  --card-foreground: #f2f4f3;
+  --popover: #3a322a;
+  --popover-foreground: #f2f4f3;
+  --primary: #a9927d; /* Gold pops on dark */
+  --primary-foreground: #2c251f;
+  --secondary: #5e503f;
+  --secondary-foreground: #f2f4f3;
+  --muted: #3a322a;
+  --muted-foreground: #a9927d;
+  --accent: #3a322a;
+  --accent-foreground: #f2f4f3;
+  --destructive: #9b1c1c;
+  --border: #4a4036;
+  --input: #4a4036;
+  --ring: #a9927d;
+  --burgundy: #a01030;
+
+  --chart-1: #a9927d;
+  --chart-2: #5e503f;
+  --chart-3: #f2f4f3;
+  --chart-4: #800020;
+  --chart-5: #d4c5b8;
+
+  --sidebar: #2c251f;
+  --sidebar-foreground: #f2f4f3;
+  --sidebar-primary: #a9927d;
+  --sidebar-primary-foreground: #2c251f;
+  --sidebar-accent: #3a322a;
+  --sidebar-accent-foreground: #f2f4f3;
+  --sidebar-border: #4a4036;
+  --sidebar-ring: #a9927d;
 }
 
 @layer base {
-  * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

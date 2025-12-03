@@ -1,5 +1,17 @@
 // src/types/paymob.d.ts
 
+export interface PaymobRefundResponse {
+  id: number;
+  pending: boolean;
+  success: boolean;
+  amount_cents: number;
+  transaction: number; // ID of the original transaction being refunded
+  order: number; // ID of the order
+}
+
+
+
+
 export interface PaymobTransaction {
   id: number;
   pending: boolean;

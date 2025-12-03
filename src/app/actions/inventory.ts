@@ -1,8 +1,8 @@
 // src/app/actions/inventory.ts
-'use server';
+"use server";
 
 import { prisma } from "@/lib/prisma";
-import type { OrderItem } from "@prisma/client";
+import type { OrderItem, Prisma } from "@prisma/client";
 
 /**
  * Decrements the stock for a list of order items.
@@ -16,26 +16,23 @@ export async function decrementInventory(items: OrderItem[]): Promise<void> {
 
   console.log(`Decrementing inventory for ${items.length} line items.`);
 
-  const stockUpdates = items.map(item => {
-    return prisma.productVariant.update({
-      where: {
-        id: item.variantId,
-        // Optional: Add a check to ensure stock is sufficient before decrementing
-        stock: {
-          gte: item.quantity,
-        }
-      },
-      data: {
-        stock: {
-          decrement: item.quantity,
-        },
-      },
-    });
-  });
+  const stockUpdates: Array<Prisma.PrismaPromise<Prisma.BatchPayload>> = items.map((item) =>
+    prisma.productVariant.updateMany({
+      where: { id: item.variantId, stock: { gte: item.quantity } },
+      data: { stock: { decrement: item.quantity } },
+    })
+  );
 
   try {
     // $transaction ensures all these updates are executed as a single atomic operation
-    await prisma.$transaction(stockUpdates);
+    const results: Prisma.BatchPayload[] = await prisma.$transaction(stockUpdates);
+
+    // If any updateMany affected 0 rows it means the stock check failed for that variant
+    const failed = results.find((r) => r.count === 0);
+    if (failed) {
+      throw new Error("Insufficient stock for one or more items; transaction rolled back.");
+    }
+
     console.log("Inventory decremented successfully.");
   } catch (error) {
     // This could happen if, for example, the stock gte check fails for one of the items.

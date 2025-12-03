@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { ShippingAddressSchema } from './zod-schemas';
+import { PaymobRefundResponse } from '@/types/paymob';
 
 // Infer the TypeScript type directly from the Zod schema for type safety
 type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
@@ -95,4 +96,32 @@ export async function getPaymobPaymentKey(
 
   const data = await response.json();
   return data.token;
+}
+
+
+// 4. Create a Refund with Paymob (New Function)
+export async function createPaymobRefund(
+  authToken: string,
+  transactionId: string,
+  amountCents: number
+): Promise<PaymobRefundResponse> { // <-- FIX: Changed 'any' to 'PaymobRefundResponse'
+  const response = await fetch("https://accept.paymob.com/api/acceptance/void_refund/refund", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      auth_token: authToken,
+      transaction_id: transactionId,
+      amount_cents: amountCents,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json();
+    console.error("Paymob Refund Error:", errorBody);
+    throw new Error(`Failed to create Paymob refund: ${errorBody.detail || 'Unknown error'}`);
+  }
+
+  // The 'data' constant is now automatically inferred as 'PaymobRefundResponse'
+  const data = await response.json();
+  return data;
 }

@@ -1,10 +1,10 @@
-'use client'
+"use client";
 
 import { addItem, decrementItem, incrementItem } from "@/app/actions/cart";
 import { CartWithItems } from "@/types/cart";
 import { Minus, Plus } from "lucide-react";
 import { useTransition } from "react";
-import { toast } from "sonner"; // Import the toast function from sonner
+import { toast } from "sonner";
 
 interface AddToCartButtonProps {
   variantId: string;
@@ -20,19 +20,20 @@ export default function AddToCartButton({ variantId, cart }: AddToCartButtonProp
     startTransition(async () => {
       try {
         await addItem(variantId);
-        // This line triggers the success toast
         toast.success("Item added to your cart.");
       } catch (error) {
-        // This line triggers the error toast
-        toast.error("Error: Could not add item to cart.");
-        console.error("Failed to add item:", error);
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("Error: Could not add item to cart.");
+        }
       }
     });
   };
 
   if (cartItem) {
     return (
-      <div className="flex items-center justify-center rounded-md border border-gray-300">
+      <div className="flex items-center justify-center rounded-md border border-input">
         <button
           type="button"
           disabled={isPending}
@@ -41,13 +42,13 @@ export default function AddToCartButton({ variantId, cart }: AddToCartButtonProp
               await decrementItem(cartItem.id);
             });
           }}
-          className="p-3 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+          className="p-3 text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           <span className="sr-only">Decrement quantity</span>
           <Minus className="h-5 w-5" />
         </button>
 
-        <span className="w-12 text-center text-base font-medium text-gray-800">
+        <span className="w-12 text-center text-base font-medium text-foreground">
           {cartItem.quantity}
         </span>
 
@@ -56,10 +57,19 @@ export default function AddToCartButton({ variantId, cart }: AddToCartButtonProp
           disabled={isPending}
           onClick={() => {
             startTransition(async () => {
-              await incrementItem(cartItem.id);
+              // --- FIX: Error handling for increment ---
+              try {
+                await incrementItem(cartItem.id);
+              } catch (error) {
+                if (error instanceof Error) {
+                  toast.error(error.message);
+                } else {
+                  toast.error("Cannot add more items.");
+                }
+              }
             });
           }}
-          className="p-3 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+          className="p-3 text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           <span className="sr-only">Increment quantity</span>
           <Plus className="h-5 w-5" />
@@ -72,7 +82,7 @@ export default function AddToCartButton({ variantId, cart }: AddToCartButtonProp
     <button
       onClick={handleAddItem}
       disabled={isPending}
-      className="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+      className="flex w-full items-center justify-center rounded-md border border-transparent bg-primary px-8 py-3 text-base font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
     >
       {isPending ? "Adding..." : "Add to cart"}
     </button>

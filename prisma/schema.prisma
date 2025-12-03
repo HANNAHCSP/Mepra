@@ -31,7 +31,7 @@ enum PaymentStatus {
   CAPTURED
   FAILED
   REFUNDED
-  PARTIALLY_REFUNDED
+  PARTIALLY_REFUNDED // New
 }
 
 enum RefundStatus {
@@ -103,7 +103,7 @@ model Product {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   variants      ProductVariant[]
-  wishlistItems WishlistItem[] // Relation to WishlistItem
+  wishlistItems WishlistItem[]
 }
 
 model ProductVariant {
@@ -190,7 +190,7 @@ model Payment {
   providerRef         String?       @unique
   amount              Int
   status              PaymentStatus
-  refundedAmountCents Int           @default(0) // New field to track refunded amount
+  refundedAmountCents Int           @default(0) // Track refunded amount
   errorCode           String?
   errorMessage        String?
   createdAt           DateTime      @default(now())
@@ -210,9 +210,8 @@ model Refund {
   providerRef       String?      @unique
   requestedByUserId String?
   requestedByUser   User?        @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
-  requestedByRole   Role
   createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt // <-- FIX: Added @updatedAt
+  updatedAt         DateTime     @updatedAt
 }
 
 // --- WISHLIST MODELS ---
@@ -234,4 +233,15 @@ model WishlistItem {
   createdAt  DateTime @default(now())
 
   @@unique([wishlistId, productId])
+}
+
+
+
+model GuestUpgradeInvite {
+  id        String   @id @default(cuid())
+  email     String
+  orderId   String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

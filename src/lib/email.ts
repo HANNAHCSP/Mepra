@@ -1,5 +1,5 @@
 // src/lib/email.ts
-import type { Order } from "@prisma/client";
+import type { Order, Refund } from "@prisma/client";
 
 /**
  * Sends an order confirmation email to the customer.
@@ -53,4 +53,34 @@ export async function notifyStaffOfNewOrder(order: Order): Promise<void> {
         });
     }
     */
+}
+
+
+/**
+ * Sends a refund status update email to the customer. (New Function)
+ * @param refund - The refund object from your database.
+ * @param order - The associated order object.
+ */
+export async function sendRefundStatusEmail(refund: Refund, order: Order): Promise<void> {
+  const status = refund.status.toLowerCase();
+  const amount = (refund.amountCents / 100).toFixed(2);
+  
+  console.log(`✅ Sending refund status '${status}' email to: ${order.customerEmail}`);
+  console.log(`Order Number: ${order.orderNumber}`);
+  console.log(`Refund Amount: ${amount} EGP`);
+  
+  // Example of what you would do with a real email service
+  /*
+  try {
+    await resend.emails.send({
+      from: 'Mepra Store <support@yourdomain.com>',
+      to: order.customerEmail,
+      subject: `Update on your refund for order #${order.orderNumber}`,
+      html: `<p>Your refund of ${amount} EGP has been ${status}.</p>`
+    });
+    console.log("Refund status email sent successfully.");
+  } catch (error) {
+    console.error("Failed to send refund status email:", error);
+  }
+  */
 }

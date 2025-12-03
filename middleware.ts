@@ -14,7 +14,7 @@ export default withAuth(
     if (pathname.startsWith("/api/webhook")) {
       const response = NextResponse.next();
       // Add CORS headers for Localtunnel
-      response.headers.set("Access-Control-Allow-Origin", "https://mypaymob.loca.lt");
+      response.headers.set("Access-Control-Allow-Origin", "https://2e8450831e47f92281f17278dc3086d6.serveo.net");
       response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
       response.headers.set("Access-Control-Allow-Headers", "Content-Type, x-paymob-signature");
       return response;
