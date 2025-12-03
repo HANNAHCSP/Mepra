@@ -1,86 +1,122 @@
 // src/lib/email.ts
-import type { Order, Refund } from "@prisma/client";
+import { Resend } from "resend";
+import { Order, OrderItem } from "@prisma/client";
+import { OrderConfirmationEmail } from "@/components/ui/email/order-confirmation";
+import { RefundStatusEmail } from "@/components/ui/email/refund-status";
+import { render } from "@react-email/render";
+import { ShippingAddressSchema } from "@/lib/zod-schemas";
 
-/**
- * Sends an order confirmation email to the customer.
- * This is a placeholder function. In production, you would integrate
- * a real email service like Resend, SendGrid, or Nodemailer here.
- * @param order - The complete order object from your database.
- */
-export async function sendOrderConfirmationEmail(order: Order): Promise<void> {
-  console.log(`✅ Sending order confirmation email to: ${order.customerEmail}`);
-  console.log(`Order Number: ${order.orderNumber}`);
-  console.log(`Total: ${(order.total / 100).toFixed(2)} EGP`);
-  
-  // Example of what you would do with a real email service (e.g., Resend):
-  /*
-  import { Resend } from 'resend';
-  const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-  try {
-    await resend.emails.send({
-      from: 'Mepra Store <sales@yourdomain.com>',
-      to: order.customerEmail,
-      subject: `Your Mepra Order #${order.orderNumber} is Confirmed!`,
-      // You can build a React component for your email body
-      // react: <OrderConfirmationEmailTemplate order={order} />,
-      html: `<h1>Thank you for your order!</h1><p>Your order #${order.orderNumber} has been confirmed.</p>`
-    });
-    console.log("Confirmation email sent successfully.");
-  } catch (error) {
-    console.error("Failed to send confirmation email:", error);
+// Define a type that includes the items, as standard Prisma Order doesn't have them
+type OrderWithItems = Order & {
+  items: OrderItem[];
+};
+
+export async function sendOrderConfirmationEmail(order: OrderWithItems): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("⚠️ RESEND_API_KEY is missing. Email simulation:");
+    console.log(`To: ${order.customerEmail}`);
+    console.log(`Subject: Order #${order.orderNumber} Confirmed`);
+    return;
   }
-  */
-}
 
-/**
- * Notifies staff about a new order.
- * This could be an email, a Slack message, or another internal notification.
- */
-export async function notifyStaffOfNewOrder(order: Order): Promise<void> {
-    console.log(`🔔 New Order Notification!`);
-    console.log(`Order #${order.orderNumber} for ${(order.total / 100).toFixed(2)} EGP was just placed.`);
-    
-    // Example for a Slack notification
-    /*
-    if (process.env.SLACK_WEBHOOK_URL) {
-        await fetch(process.env.SLACK_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text: `🎉 New Order! #${order.orderNumber} for ${(order.total / 100).toFixed(2)} EGP.`
-            })
-        });
-    }
-    */
-}
-
-
-/**
- * Sends a refund status update email to the customer. (New Function)
- * @param refund - The refund object from your database.
- * @param order - The associated order object.
- */
-export async function sendRefundStatusEmail(refund: Refund, order: Order): Promise<void> {
-  const status = refund.status.toLowerCase();
-  const amount = (refund.amountCents / 100).toFixed(2);
-  
-  console.log(`✅ Sending refund status '${status}' email to: ${order.customerEmail}`);
-  console.log(`Order Number: ${order.orderNumber}`);
-  console.log(`Refund Amount: ${amount} EGP`);
-  
-  // Example of what you would do with a real email service
-  /*
   try {
+    // 1. Safely parse the JSON from the database
+    const rawAddress =
+      typeof order.shippingAddress === "string"
+        ? JSON.parse(order.shippingAddress)
+        : order.shippingAddress;
+
+    // 2. Validate it against your schema to get proper types (removes 'any')
+    const parseResult = ShippingAddressSchema.safeParse(rawAddress);
+
+    if (!parseResult.success) {
+      console.error("Invalid shipping address format in order:", order.id);
+      return;
+    }
+
+    const shippingAddress = parseResult.data;
+
+    // Render the React template to HTML
+    const emailHtml = await render(
+      OrderConfirmationEmail({
+        orderNumber: order.orderNumber,
+        customerName: shippingAddress.firstName || "Customer",
+        items: order.items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        total: order.total,
+        shippingAddress: {
+          street: shippingAddress.address,
+          city: shippingAddress.city,
+          zipCode: shippingAddress.zipCode,
+          country: shippingAddress.country,
+        },
+      })
+    );
+
+    // Send the email
     await resend.emails.send({
-      from: 'Mepra Store <support@yourdomain.com>',
+      from: "Mepra Store <onboarding@resend.dev>", // Use your verified domain in production
       to: order.customerEmail,
-      subject: `Update on your refund for order #${order.orderNumber}`,
-      html: `<p>Your refund of ${amount} EGP has been ${status}.</p>`
+      subject: `Your Mepra Order #${order.orderNumber}`,
+      html: emailHtml,
     });
-    console.log("Refund status email sent successfully.");
+
+    console.log(`✅ Confirmation email sent to ${order.customerEmail}`);
+  } catch (error) {
+    console.error("❌ Failed to send confirmation email:", error);
+  }
+}
+
+export async function notifyStaffOfNewOrder(order: OrderWithItems): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+
+  try {
+    // Simple text email for staff
+    await resend.emails.send({
+      from: "Mepra System <onboarding@resend.dev>",
+      to: "admin@mepra-store.com", // Replace with your real admin email
+      subject: `🔔 New Order: ${order.orderNumber}`,
+      html: `<p>New order received for <strong>$${(order.total / 100).toFixed(2)}</strong>.</p><p>Check the <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders/${order.id}">Admin Dashboard</a> for details.</p>`,
+    });
+  } catch (error) {
+    console.error("Failed to notify staff:", error);
+  }
+}
+
+export async function sendRefundStatusEmail(data: {
+  orderNumber: string;
+  customerEmail: string;
+  customerName: string;
+  amount: number;
+  status: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV EMAIL] Refund update to ${data.customerEmail}: Status ${data.status}`);
+    return;
+  }
+
+  try {
+    const emailHtml = await render(
+      RefundStatusEmail({
+        orderNumber: data.orderNumber,
+        customerName: data.customerName,
+        amount: data.amount,
+        status: data.status,
+      })
+    );
+
+    await resend.emails.send({
+      from: "Mepra Store <onboarding@resend.dev>",
+      to: data.customerEmail,
+      subject: `Refund Update: Order #${data.orderNumber}`,
+      html: emailHtml,
+    });
   } catch (error) {
     console.error("Failed to send refund status email:", error);
   }
-  */
 }
