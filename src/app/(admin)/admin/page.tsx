@@ -1,133 +1,140 @@
+// src/app/(admin)/admin/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import LogoutButton from "@/components/ui/logout-button";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { ArrowUpRight, Users, CreditCard, ShoppingBag, LucideIcon } from "lucide-react";
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
 
-  // Defense-in-depth: if somehow reached, re-check.
   if (!session || session.user.role !== "admin") {
     redirect("/");
   }
 
-  // Fetch users and recent orders in parallel
-  const [users, recentOrders] = await Promise.all([
-    prisma.user.findMany({
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-    }),
+  const [usersCount, recentOrders, totalRevenue] = await Promise.all([
+    prisma.user.count(),
     prisma.order.findMany({
-      where: { status: { not: 'DRAFT' } },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
+      where: { status: { not: "DRAFT" } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
       include: { user: { select: { name: true } } },
+    }),
+    prisma.order.aggregate({
+      where: { status: { not: "DRAFT" }, paymentStatus: "CAPTURED" },
+      _sum: { total: true },
     }),
   ]);
 
+  const revenue = totalRevenue._sum.total ? totalRevenue._sum.total / 100 : 0;
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-        <LogoutButton variant="danger" size="md">
-          Sign Out
-        </LogoutButton>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-light text-primary">Overview</h2>
+        <p className="text-muted-foreground mt-1">Welcome back, {session.user.name}.</p>
       </div>
 
-      <p className="mt-2 text-gray-600">
-        Welcome, {session.user.name ?? "admin"}.
-      </p>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatsCard
+          title="Total Revenue"
+          value={`$${revenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+          icon={CreditCard}
+          trend="+12.5% from last month"
+        />
+        <StatsCard
+          title="Active Orders"
+          value={recentOrders.length.toString()}
+          icon={ShoppingBag}
+          trend="+4 new today"
+        />
+        <StatsCard
+          title="Registered Clients"
+          value={usersCount.toString()}
+          icon={Users}
+          trend="Growing steadily"
+        />
+      </div>
 
-      {/* Recent Orders Section */}
-      <section>
-        <h2 className="text-xl font-medium mb-3">Recent Orders</h2>
-        <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
+      {/* Recent Orders Table */}
+      <div className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-border/60 flex justify-between items-center bg-accent/30">
+          <h3 className="text-lg font-medium text-foreground">Recent Activity</h3>
+          <Link
+            href="/admin/orders"
+            className="text-sm text-secondary hover:text-primary transition-colors flex items-center gap-1"
+          >
+            View All <ArrowUpRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs uppercase tracking-wider text-muted-foreground bg-accent/50 font-medium">
               <tr>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Order #</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Customer</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Status</th>
-                <th className="px-4 py-2 text-right font-medium text-gray-700">Total</th>
+                <th className="px-6 py-4">Order ID</th>
+                <th className="px-6 py-4">Client</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Amount</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/40">
               {recentOrders.map((order) => (
-                <tr key={order.id} className="border-t">
-                  <td className="px-4 py-2 font-medium text-blue-600 hover:underline">
-                    {/* Link to a future order details page */}
-                    {order.orderNumber}
+                <tr key={order.id} className="hover:bg-accent/30 transition-colors group">
+                  <td className="px-6 py-4 font-medium text-foreground">
+                    <span className="font-mono text-xs text-muted-foreground">#</span>
+                    {order.orderNumber.split("-")[1] || order.orderNumber}
                   </td>
-                  <td className="px-4 py-2">{order.user?.name ?? order.customerEmail}</td>
-                  <td className="px-4 py-2">{new Date(order.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-2">
+                  <td className="px-6 py-4 text-foreground/80">
+                    {order.user?.name ?? order.customerEmail}
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">
                     <Badge status={order.status}>{order.status}</Badge>
                   </td>
-                  <td className="px-4 py-2 text-right font-medium">
+                  <td className="px-6 py-4 text-right font-medium text-foreground">
                     ${(order.total / 100).toFixed(2)}
                   </td>
                 </tr>
               ))}
-              {recentOrders.length === 0 && (
-                <tr>
-                  <td className="px-4 py-4 text-center text-gray-500" colSpan={5}>
-                    No orders found.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
+    </div>
+  );
+}
 
-      {/* All Users Section */}
-      <section>
-        <h2 className="text-xl font-medium mb-3">All Users</h2>
-        <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Name</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Email</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Role</th>
-                <th className="px-4 py-2 text-left font-medium text-gray-700">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-t">
-                  <td className="px-4 py-2">{u.name}</td>
-                  <td className="px-4 py-2">{u.email}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${
-                        u.role === "admin"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {new Date(u.createdAt).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td className="px-4 py-4 text-center text-gray-500" colSpan={4}>
-                    No users found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+function StatsCard({
+  title,
+  value,
+  icon: Icon,
+  trend,
+}: {
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  trend: string;
+}) {
+  return (
+    <div className="bg-card p-6 rounded-xl border border-border/60 shadow-sm hover:shadow-md transition-shadow duration-300">
+      <div className="flex items-center justify-between mb-4">
+        <span className="p-2 bg-secondary/10 rounded-lg text-secondary border border-secondary/20">
+          <Icon className="w-5 h-5" />
+        </span>
+        <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-100">
+          {trend}
+        </span>
+      </div>
+      <div>
+        <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">{title}</p>
+        <h3 className="text-3xl font-light text-primary mt-1">{value}</h3>
+      </div>
     </div>
   );
 }

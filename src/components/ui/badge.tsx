@@ -4,16 +4,16 @@ import { cn } from "@/lib/utils";
 import { OrderStatus } from "@prisma/client";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize transition-colors focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-wide transition-all duration-300",
   {
     variants: {
       status: {
-        PENDING: "border-transparent bg-secondary/10 text-secondary",
-        CONFIRMED: "border-transparent bg-primary/10 text-primary",
-        SHIPPED: "border-transparent bg-secondary/20 text-secondary",
-        DELIVERED: "border-transparent bg-secondary/30 text-secondary",
-        CANCELED: "border-transparent bg-muted text-muted-foreground",
-        REFUNDED: "border-transparent bg-burgundy/10 text-burgundy",
+        PENDING: "border-secondary/20 bg-secondary/10 text-secondary hover:bg-secondary/20",
+        CONFIRMED: "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10",
+        SHIPPED: "border-[#D4C5B8] bg-[#D4C5B8]/20 text-[#6B5E4F]",
+        DELIVERED: "border-green-800/10 bg-green-50 text-green-900", // Keep accessible green but muted
+        CANCELED: "border-muted-foreground/20 bg-muted/50 text-muted-foreground",
+        REFUNDED: "border-burgundy/20 bg-burgundy/5 text-burgundy",
         DRAFT: "border-transparent bg-muted text-muted-foreground",
       },
     },

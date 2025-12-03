@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { processRefundAction } from "@/app/actions/refund";
 import { Button } from "@/components/ui/button";
 import { RefundStatusBadge } from "@/components/ui/refund-status-badge";
-import { AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Check, X, RefreshCw } from "lucide-react";
 import type { Order, Refund, User } from "@prisma/client";
 
 type RefundWithUser = Refund & { requestedByUser: User | null };
@@ -23,15 +23,10 @@ export default function RefundPanel({ order }: RefundPanelProps) {
     startTransition(async () => {
       try {
         await processRefundAction(refundId, action);
-        toast.success(`Refund request has been ${action === "approve" ? "approved" : "denied"}.`, {
-          description:
-            action === "approve"
-              ? "The refund is now being processed by the payment provider."
-              : "The customer has been notified of the decision.",
-        });
-      } catch (error: Error | unknown) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to process refund.";
-        toast.error(errorMessage);
+        toast.success(`Refund ${action === "approve" ? "approved" : "denied"} successfully.`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to process refund.";
+        toast.error(message);
       }
     });
   };
@@ -40,106 +35,87 @@ export default function RefundPanel({ order }: RefundPanelProps) {
   const processedRefunds = order.refunds.filter((r) => r.status !== "REQUESTED");
 
   return (
-    <div className="bg-card border-2 border-border rounded-lg shadow-sm overflow-hidden">
-      <div className="bg-accent/50 px-6 py-4 border-b-2 border-border">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-secondary" />
-          Refunds
-        </h2>
-      </div>
-
+    <div className="space-y-6">
+      {/* Active Requests Section */}
       {pendingRefunds.length > 0 && (
-        <div className="p-6 bg-secondary/5 border-b-2 border-border">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-2 w-2 rounded-full bg-secondary animate-pulse" />
-            <h3 className="font-semibold text-foreground">Pending Requests</h3>
+        <div className="bg-card border border-[#A9927D]/30 rounded-xl shadow-lg overflow-hidden">
+          <div className="px-6 py-4 bg-[#5E503F] text-white flex justify-between items-center">
+            <h3 className="font-light tracking-wide text-sm uppercase">Refund Request</h3>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+            </span>
           </div>
-          <ul className="space-y-4">
+          
+          <div className="divide-y divide-[#A9927D]/10">
             {pendingRefunds.map((refund) => (
-              <li
-                key={refund.id}
-                className="p-4 bg-card rounded-lg border-2 border-border shadow-sm"
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <p className="font-bold text-xl text-primary mb-1">
+              <div key={refund.id} className="p-6 bg-[#A9927D]/5">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-3xl font-light text-primary">
                       ${(refund.amountCents / 100).toFixed(2)}
                     </p>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      <span className="font-medium">Reason:</span>{" "}
-                      {refund.reason || "No reason provided"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Requested by {refund.requestedByUser?.name || "Customer"} on{" "}
-                      {new Date(refund.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                    <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">
+                      Requested by {refund.requestedByUser?.name || "Client"}
                     </p>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleProcess(refund.id, "deny")}
-                      disabled={isPending}
-                      className="gap-1"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Deny
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleProcess(refund.id, "approve")}
-                      disabled={isPending}
-                      className="gap-1 bg-secondary hover:bg-secondary/90"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Approve
-                    </Button>
+                  <div className="text-right">
+                    <span className="text-xs font-medium text-foreground/70 bg-white px-2 py-1 rounded border border-border">
+                      {new Date(refund.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
-              </li>
+                
+                <div className="bg-white p-4 rounded-lg border border-border/40 mb-6">
+                  <p className="text-sm text-foreground/80 italic">
+                    &quot;{refund.reason || "No specific reason provided."}&quot;
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => handleProcess(refund.id, "approve")}
+                    disabled={isPending}
+                    className="flex-1 bg-[#5E503F] hover:bg-[#4A3F32] text-white shadow-md hover:shadow-lg transition-all"
+                  >
+                    {isPending ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                    Approve Request
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleProcess(refund.id, "deny")}
+                    disabled={isPending}
+                    className="flex-1 border-burgundy/30 text-burgundy hover:bg-burgundy/5 hover:border-burgundy/50"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Decline
+                  </Button>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
+      {/* History Section */}
       {processedRefunds.length > 0 && (
-        <div className="p-6">
-          <h3 className="font-semibold text-foreground mb-4">Refund History</h3>
-          <ul className="space-y-3">
+        <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-border/60 bg-accent/20">
+            <h3 className="font-medium text-foreground">Refund History</h3>
+          </div>
+          <ul className="divide-y divide-border/40">
             {processedRefunds.map((refund) => (
-              <li
-                key={refund.id}
-                className="flex justify-between items-center p-3 rounded-md bg-accent/30"
-              >
-                <div>
-                  <p className="font-medium text-foreground">
-                    ${(refund.amountCents / 100).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(refund.updatedAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
+              <li key={refund.id} className="p-4 flex items-center justify-between hover:bg-accent/10 transition-colors">
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">${(refund.amountCents / 100).toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Processed on {new Date(refund.updatedAt).toLocaleDateString()}
+                  </span>
                 </div>
                 <RefundStatusBadge status={refund.status} />
               </li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {order.refunds.length === 0 && (
-        <div className="p-8 text-center">
-          <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No refunds for this order.</p>
         </div>
       )}
     </div>

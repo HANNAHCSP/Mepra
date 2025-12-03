@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPaymobRefund, getPaymobAuthToken } from "@/lib/paymob.actions";
 import { sendRefundStatusEmail } from "@/lib/email";
-import { RefundStatus, OrderStatus, PaymentStatus, Role } from "@prisma/client";
+import { RefundStatus, OrderStatus, PaymentStatus } from "@prisma/client";
 
 const RequestRefundSchema = z.object({
   orderId: z.string(),
@@ -76,7 +76,12 @@ export async function requestRefundAction(
       },
     });
 
-    revalidatePath(`/account/orders/${order.orderNumber}`);
+    // --- REVALIDATION: Ensure all relevant pages update ---
+    revalidatePath(`/account/orders/${order.orderNumber}`); // Customer View
+    revalidatePath(`/admin/orders/${order.id}`); // Admin Details View
+    revalidatePath("/admin/orders"); // Admin List View
+    revalidatePath("/admin"); // Admin Dashboard Stats
+
     return { success: true, message: "Refund request submitted successfully." };
   } catch (error) {
     console.error("Refund request error:", error);
@@ -113,6 +118,8 @@ export async function processRefundAction(refundId: string, action: "approve" | 
     }
 
     const authToken = await getPaymobAuthToken();
+
+    // Call Paymob API to initiate refund
     const paymobRefund = await createPaymobRefund(
       authToken,
       refund.payment.providerRef,
@@ -128,11 +135,14 @@ export async function processRefundAction(refundId: string, action: "approve" | 
     });
   }
 
+  // --- REVALIDATION: Update Admin Views Immediately ---
   revalidatePath(`/admin/orders/${refund.orderId}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin");
 }
 
 /**
- * Finalizes a refund after receiving a webhook confirmation from Paymob. (New Function)
+ * Finalizes a refund after receiving a webhook confirmation from Paymob.
  * This action is idempotent and should only be called by the webhook handler.
  */
 export async function finalizeRefundAction(paymobRefundId: string, isSuccess: boolean) {
@@ -143,7 +153,7 @@ export async function finalizeRefundAction(paymobRefundId: string, isSuccess: bo
       include: { payment: true, order: true },
     });
 
-    // 2. Idempotency Check: If refund not found or already processed, exit safely.
+    // 2. Idempotency Check
     if (!refund || refund.status !== RefundStatus.PROCESSING) {
       console.warn(`Webhook for refund ${paymobRefundId} skipped: Not found or already processed.`);
       return;
@@ -155,9 +165,31 @@ export async function finalizeRefundAction(paymobRefundId: string, isSuccess: bo
       data: { status: isSuccess ? RefundStatus.SUCCEEDED : RefundStatus.FAILED },
     });
 
-    // 4. If the refund failed, we're done with this transaction.
+    // Extract customer name safely from shipping address to use in email
+    interface ShippingAddress {
+      firstName?: string;
+      lastName?: string;
+    }
+
+    const rawAddress =
+      typeof refund.order.shippingAddress === "string"
+        ? (JSON.parse(refund.order.shippingAddress) as ShippingAddress)
+        : (refund.order.shippingAddress as ShippingAddress);
+
+    const customerName = rawAddress?.firstName
+      ? `${rawAddress.firstName} ${rawAddress.lastName}`
+      : "Customer";
+
+    // 4. If the refund failed, we're done (just notify and return)
     if (!isSuccess) {
-      await sendRefundStatusEmail(updatedRefund, refund.order);
+      // Fix: Passing single object as expected by sendRefundStatusEmail
+      await sendRefundStatusEmail({
+        orderNumber: refund.order.orderNumber,
+        customerEmail: refund.order.customerEmail,
+        customerName: customerName,
+        amount: updatedRefund.amountCents,
+        status: updatedRefund.status,
+      });
       return updatedRefund;
     }
 
@@ -173,25 +205,36 @@ export async function finalizeRefundAction(paymobRefundId: string, isSuccess: bo
         ? PaymentStatus.REFUNDED
         : PaymentStatus.PARTIALLY_REFUNDED;
 
-    // --- FIX IS HERE ---
-    // Determine the new OrderStatus based on the final refunded amount
+    // 7. Determine the new OrderStatus based on the final refunded amount
+    // Logic: If fully refunded, the order status becomes REFUNDED.
+    // If partially refunded, we keep the existing status (e.g. CONFIRMED).
     const newOrderStatus =
-      newPaymentStatus === PaymentStatus.REFUNDED ? OrderStatus.REFUNDED : refund.order.status; // Keep the existing order status on partial refund
+      newPaymentStatus === PaymentStatus.REFUNDED ? OrderStatus.REFUNDED : refund.order.status;
 
-    // 7. Update the Order record with both payment and order status
+    // 8. Update the Order record
     await tx.order.update({
       where: { id: refund.orderId },
       data: {
         paymentStatus: newPaymentStatus,
-        status: newOrderStatus, // Update the order status
+        status: newOrderStatus,
       },
     });
-    // --- END OF FIX ---
 
-    // 8. Send notification and revalidate paths
-    await sendRefundStatusEmail(updatedRefund, refund.order);
+    // 9. Send notification
+    // Fix: Passing single object as expected by sendRefundStatusEmail
+    await sendRefundStatusEmail({
+      orderNumber: refund.order.orderNumber,
+      customerEmail: refund.order.customerEmail,
+      customerName: customerName,
+      amount: updatedRefund.amountCents,
+      status: updatedRefund.status,
+    });
+
+    // --- REVALIDATION: Ensure the webhook triggers UI updates ---
     revalidatePath(`/account/orders/${refund.order.orderNumber}`);
     revalidatePath(`/admin/orders/${refund.orderId}`);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin");
 
     console.log(`Successfully finalized refund ${refund.id} for order ${refund.orderId}`);
     return updatedRefund;
