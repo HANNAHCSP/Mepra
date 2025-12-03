@@ -41,8 +41,6 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-
-  /* Custom Burgundy Utility */
   --color-burgundy: var(--burgundy);
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -52,50 +50,43 @@
 }
 
 :root {
-  /* YOUR PALETTE MAPPING */
-
-  /* Background: Cultured (#F2F4F3) */
+  /* === APPROVED PALETTE === */
+  /* Backgrounds */
   --background: #f2f4f3;
-
-  /* Foreground/Text: Umber (#5E503F) - Replacing standard black */
-  --foreground: #5e503f;
-
-  /* Cards can be pure white to pop against the off-white background */
   --card: #ffffff;
-  --card-foreground: #5e503f;
-
   --popover: #ffffff;
   --popover-foreground: #5e503f;
 
-  /* Primary: Umber (#5E503F) - Used for main buttons */
+  /* Foreground/Text */
+  --foreground: #5e503f;
+  --muted-foreground: #968775; /* UPDATED: Darker for better contrast */
+
+  /* Primary (Umber) */
   --primary: #5e503f;
   --primary-foreground: #f2f4f3;
 
-  /* Secondary: Grullo (#A9927D) - Used for highlights/secondary buttons */
+  /* Secondary (Grullo) */
   --secondary: #a9927d;
   --secondary-foreground: #ffffff;
 
-  /* Muted: A softer version of Grullo for backgrounds */
+  /* Muted */
   --muted: #e6e4e1;
-  --muted-foreground: #a9927d;
 
-  /* Accent: Grullo (#A9927D) or Burgundy */
+  /* Accent */
   --accent: #f9f7f5;
   --accent-foreground: #5e503f;
 
-  /* Destructive: Burgundy (#800020) - Using your requested burgundy shade */
+  /* Burgundy (Errors/Destructive) */
+  --burgundy: #800020;
   --destructive: #800020;
   --destructive-foreground: #ffffff;
 
-  /* Specific Burgundy Variable for custom use */
-  --burgundy: #800020;
-
-  /* Borders: Grullo (#A9927D) creates nice elegant dividers */
+  /* Borders */
   --border: #dcd6d0;
   --input: #dcd6d0;
   --ring: #a9927d;
 
-  /* Charts - Adjusted to fit palette */
+  /* Charts */
   --chart-1: #5e503f;
   --chart-2: #a9927d;
   --chart-3: #800020;
@@ -104,7 +95,7 @@
 
   --radius: 0.625rem;
 
-  /* Sidebar variables (can mirror main theme) */
+  /* Sidebar */
   --sidebar: #f2f4f3;
   --sidebar-foreground: #5e503f;
   --sidebar-primary: #5e503f;
@@ -113,17 +104,35 @@
   --sidebar-accent-foreground: #5e503f;
   --sidebar-border: #dcd6d0;
   --sidebar-ring: #a9927d;
+
+  /* === NEW: SPACING SYSTEM === */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* === NEW: SHADOWS === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+  /* === NEW: TRANSITIONS === */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
-  /* Dark Mode Mapping (Optional - inverted values) */
-  --background: #2c251f; /* Very dark brown */
+  --background: #2c251f;
   --foreground: #f2f4f3;
   --card: #3a322a;
   --card-foreground: #f2f4f3;
   --popover: #3a322a;
   --popover-foreground: #f2f4f3;
-  --primary: #a9927d; /* Gold pops on dark */
+  --primary: #a9927d;
   --primary-foreground: #2c251f;
   --secondary: #5e503f;
   --secondary-foreground: #f2f4f3;
@@ -157,7 +166,76 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  /* === NEW: TYPOGRAPHY SCALE === */
+  h1 {
+    @apply text-4xl font-light tracking-tight leading-tight;
+  }
+
+  h2 {
+    @apply text-3xl font-light tracking-tight leading-snug;
+  }
+
+  h3 {
+    @apply text-2xl font-normal tracking-normal leading-snug;
+  }
+
+  h4 {
+    @apply text-xl font-medium tracking-normal leading-snug;
+  }
+
+  p {
+    @apply text-base leading-relaxed tracking-normal;
+  }
+
+  small {
+    @apply text-sm leading-normal;
+  }
+
+  /* === NEW: FOCUS STYLES === */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-secondary ring-offset-2 ring-offset-background;
+  }
+
+  /* === NEW: SMOOTH SCROLLING === */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* === NEW: SELECTION COLOR === */
+  ::selection {
+    @apply bg-secondary/20 text-foreground;
+  }
+}
+
+/* === NEW: UTILITY CLASSES === */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .transition-smooth {
+    transition: all var(--transition-base);
+  }
+
+  /* Mobile tap target minimum */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Safe area for mobile notches */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

@@ -1,10 +1,11 @@
+// src/components/ui/cart/cart-item-actions.tsx
 "use client";
 
 import { useTransition } from "react";
 import { removeItem, incrementItem, decrementItem } from "@/app/actions/cart";
 import { Prisma } from "@prisma/client";
 import { X, Plus, Minus } from "lucide-react";
-import { toast } from "sonner"; // Import Toast
+import { toast } from "sonner";
 
 type CartItemWithProduct = Prisma.CartItemGetPayload<{
   include: { variant: { include: { product: true } } };
@@ -15,7 +16,7 @@ export default function CartItemActions({ item }: { item: CartItemWithProduct })
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center rounded-md border border-input">
+      <div className="flex items-center rounded-md border-2 border-input overflow-hidden">
         <button
           type="button"
           disabled={isPending}
@@ -24,13 +25,13 @@ export default function CartItemActions({ item }: { item: CartItemWithProduct })
               await decrementItem(item.id);
             });
           }}
-          className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="p-3 text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 transition-all duration-200 tap-target"
+          aria-label="Decrease quantity"
         >
-          <span className="sr-only">Decrement quantity</span>
           <Minus className="h-4 w-4" />
         </button>
 
-        <span className="w-10 text-center text-sm font-medium text-foreground">
+        <span className="w-12 text-center text-sm font-semibold text-foreground">
           {item.quantity}
         </span>
 
@@ -39,11 +40,9 @@ export default function CartItemActions({ item }: { item: CartItemWithProduct })
           disabled={isPending}
           onClick={() => {
             startTransition(async () => {
-              // --- FIX: Error handling ---
               try {
                 await incrementItem(item.id);
               } catch (error) {
-                // Show the error message from the server
                 if (error instanceof Error) {
                   toast.error(error.message);
                 } else {
@@ -52,9 +51,9 @@ export default function CartItemActions({ item }: { item: CartItemWithProduct })
               }
             });
           }}
-          className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="p-3 text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50 transition-all duration-200 tap-target"
+          aria-label="Increase quantity"
         >
-          <span className="sr-only">Increment quantity</span>
           <Plus className="h-4 w-4" />
         </button>
       </div>
@@ -68,9 +67,9 @@ export default function CartItemActions({ item }: { item: CartItemWithProduct })
               await removeItem(item.id);
             });
           }}
-          className="-m-2 inline-flex p-2 text-gray-400 hover:text-gray-500"
+          className="-m-2 inline-flex p-2 text-muted-foreground hover:text-burgundy transition-colors duration-200 tap-target"
+          aria-label="Remove item"
         >
-          <span className="sr-only">Remove</span>
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>

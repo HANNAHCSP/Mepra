@@ -1,12 +1,11 @@
 // src/components/ui/cart/checkout-button.tsx
-'use client'
+"use client";
 
 import { useState } from "react";
 import CheckoutGateModal from "./checkout-gate-modal";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-// Accept the itemCount prop
 interface CheckoutButtonProps {
   itemCount: number;
 }
@@ -17,11 +16,10 @@ export default function CheckoutButton({ itemCount }: CheckoutButtonProps) {
   const router = useRouter();
 
   const handleCheckoutClick = () => {
-    // If cart is empty, do nothing
     if (itemCount === 0) return;
 
-    if (status === 'authenticated') {
-      router.push('/checkout/address');
+    if (status === "authenticated") {
+      router.push("/checkout/address");
     } else {
       setIsModalOpen(true);
     }
@@ -32,15 +30,15 @@ export default function CheckoutButton({ itemCount }: CheckoutButtonProps) {
       <button
         type="button"
         onClick={handleCheckoutClick}
-        disabled={itemCount === 0} // Disable button if cart is empty
-        className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-3 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={itemCount === 0}
+        className="w-full rounded-md border border-transparent bg-primary px-6 py-3.5 text-base font-medium text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 active:scale-[0.98]"
       >
         Checkout
       </button>
       <CheckoutGateModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        cartItemCount={itemCount} // Pass the count to the modal
+        cartItemCount={itemCount}
       />
     </>
   );
