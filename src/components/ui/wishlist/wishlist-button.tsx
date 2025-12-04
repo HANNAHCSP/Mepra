@@ -1,68 +1,35 @@
-// src/components/ui/wishlist/wishlist-button.tsx
-"use client";
-
-import { useTransition } from "react";
+// src/components/ui/wishlist/wishlist-nav-button.tsx
+import Link from "next/link";
 import { Heart } from "lucide-react";
-import { toast } from "sonner";
-import { toggleWishlistItem } from "@/app/actions/wishlist";
-import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-interface WishlistButtonProps {
-  productId: string;
-  initialIsWished: boolean;
-}
+export default async function WishlistNavButton() {
+  const session = await getServerSession(authOptions);
 
-export default function WishlistButton({ productId, initialIsWished }: WishlistButtonProps) {
-  const [isPending, startTransition] = useTransition();
-  const { data: session, status } = useSession();
-  const router = useRouter();
-
-  const handleToggleWishlist = () => {
-    if (status === "unauthenticated") {
-      router.push(`/signin?callbackUrl=${window.location.pathname}`);
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        const result = await toggleWishlistItem(productId);
-        if (result.added) {
-          toast.success(result.message, {
-            description: "View all your favorites in your wishlist",
-          });
-        } else if (result.removed) {
-          toast.info(result.message);
-        }
-      } catch (error) {
-        toast.error("Something went wrong. Please try again.");
-      }
+  let itemCount = 0;
+  if (session?.user?.id) {
+    itemCount = await prisma.wishlistItem.count({
+      where: { wishlist: { userId: session.user.id } },
     });
-  };
+  }
 
   return (
-    <button
-      onClick={handleToggleWishlist}
-      disabled={isPending || status === "loading"}
-      className={cn(
-        "group flex items-center justify-center gap-2 rounded-md border-2 p-3 text-sm font-medium transition-all duration-200 tap-target",
-        initialIsWished
-          ? "border-burgundy/30 bg-burgundy/5 text-burgundy hover:bg-burgundy/10"
-          : "border-border text-foreground hover:bg-accent hover:border-secondary/50",
-        "disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
-      )}
-      aria-label={initialIsWished ? "Remove from wishlist" : "Add to wishlist"}
+    <Link
+      href="/wishlist"
+      className="relative flex items-center gap-2 px-3 py-2 rounded-lg text-foreground hover:text-secondary hover:bg-accent/50 transition-all duration-200 group"
+      aria-label={`Wishlist with ${itemCount} items`}
     >
-      <Heart
-        className={cn(
-          "h-5 w-5 transition-all duration-300",
-          initialIsWished
-            ? "fill-burgundy text-burgundy scale-110"
-            : "text-muted-foreground group-hover:text-burgundy group-hover:scale-110"
+      <div className="relative">
+        <Heart className="w-5 h-5 group-hover:scale-110 transition-transform" />
+        {itemCount > 0 && (
+          <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-burgundy text-[10px] font-bold text-white border-2 border-card shadow-sm">
+            {itemCount > 9 ? "9+" : itemCount}
+          </span>
         )}
-      />
-      <span className="font-medium">{initialIsWished ? "In Wishlist" : "Add to Wishlist"}</span>
-    </button>
+      </div>
+      <span className="hidden md:inline text-sm font-medium uppercase tracking-wide">Wishlist</span>
+    </Link>
   );
 }
