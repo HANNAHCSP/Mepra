@@ -6,7 +6,7 @@ export async function GET(req: Request, context: { params: Promise<{ orderName: 
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
 
-  // Await the params before using them
+  // Await params first
   const { orderName } = await context.params;
 
   if (!token) {
