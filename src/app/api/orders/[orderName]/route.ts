@@ -1,15 +1,13 @@
+// src/app/api/orders/[orderName]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ orderName: string }> } // 1. Change type to Promise
-) {
+export async function GET(req: Request, context: { params: Promise<{ orderName: string }> }) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get("token");
 
-  // 2. Await the params before using them
-  const { orderName } = await params;
+  // Await the params before using them
+  const { orderName } = await context.params;
 
   if (!token) {
     return NextResponse.json({ error: "Access token is required" }, { status: 401 });
@@ -22,7 +20,7 @@ export async function GET(
   try {
     const order = await prisma.order.findFirst({
       where: {
-        id: orderName, // Use the awaited variable
+        id: orderName,
         accessToken: token,
       },
       select: {
