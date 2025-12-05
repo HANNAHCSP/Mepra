@@ -11,9 +11,14 @@ import Link from "next/link";
 
 type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
 
-export default async function AdminOrderDetailsPage({ params }: { params: { orderId: string } }) {
+export default async function AdminOrderDetailsPage({
+  params,
+}: {
+  params: Promise<{ orderId: string }>;
+}) {
+  const { orderId } = await params;
   const order = await prisma.order.findUnique({
-    where: { id: params.orderId },
+    where: { id: orderId },
     include: {
       items: {
         include: {

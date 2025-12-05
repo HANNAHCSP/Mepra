@@ -6,40 +6,6 @@ export default function Footer() {
   return (
     <footer className="bg-[#1a1816] text-white py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Newsletter Section */}
-        <div className="mb-12 pb-8 border-b border-white/10">
-          <h3 className="text-2xl font-light text-white italic text-center mb-6">
-            Stay informed of the activities of Mepras Luxury Art
-          </h3>
-
-          <form
-            className="mx-auto flex w-full max-w-md items-stretch"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <input
-              type="email"
-              placeholder="Sign up for our newsletter"
-              aria-label="Email address"
-              className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-l-md text-white placeholder-white/60 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all duration-200"
-              required
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-transparent border-2 border-white/20 border-l-0 rounded-r-md text-white hover:bg-white hover:text-[#1a1816] transition-all duration-200 flex items-center gap-2"
-            >
-              SUBSCRIBE
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-          </form>
-        </div>
-
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {/* Customer Service */}
@@ -129,14 +95,7 @@ export default function Footer() {
                   History
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/design"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Design
-                </Link>
-              </li>
+
               <li>
                 <Link
                   href="/awards"
@@ -153,109 +112,13 @@ export default function Footer() {
                   Catalog
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/press"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Press
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/careers"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/whistleblowing"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Whistleblowing (Mepra SpA)
-                </Link>
-              </li>
+
               <li>
                 <Link
                   href="/mepra-website"
                   className="text-white/70 hover:text-secondary transition-colors duration-200"
                 >
                   Mepra.it website
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Other Categories */}
-          <div>
-            <h3 className="text-white font-medium text-sm mb-4 uppercase tracking-widest">
-              Other Categories
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href="/hotel-restaurant"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Hotel & restaurant
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/place-settings"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Place settings
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/cookware"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Cookware
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/serveware"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Serveware
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/coffee-tea"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Coffee and tea pots
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/ice-serving"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Ice Serving trays
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/gift-items"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Gift Items
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/nota"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Nota
                 </Link>
               </li>
             </ul>
@@ -311,21 +174,6 @@ export default function Footer() {
                   <path d="M17.955 6.05a1.124 1.124 0 11-2.248 0 1.124 1.124 0 012.248 0zM12.017 7.771c-2.336 0-4.231 1.896-4.231 4.231 0 2.336 1.896 4.231 4.231 4.231 2.336 0 4.231-1.896 4.231-4.231 0-2.335-1.896-4.231-4.231-4.231zm0 6.976c-1.513 0-2.745-1.232-2.745-2.745s1.232-2.745 2.745-2.745c1.513 0 2.745 1.232 2.745 2.745s-1.232 2.745-2.745 2.745z" />
                 </svg>
               </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Payment Icons */}
-        <div className="flex justify-end mb-8">
-          <div className="flex space-x-2">
-            <div className="w-10 h-7 bg-[#0070ba] rounded flex items-center justify-center text-xs text-white font-bold">
-              PP
-            </div>
-            <div className="w-10 h-7 bg-[#00b2e3] rounded flex items-center justify-center text-xs text-white font-bold">
-              M
-            </div>
-            <div className="w-10 h-7 bg-[#eb001b] rounded flex items-center justify-center text-xs text-white font-bold">
-              MC
             </div>
           </div>
         </div>

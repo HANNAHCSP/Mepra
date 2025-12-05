@@ -12,12 +12,17 @@ import WishlistButton from "@/components/ui/wishlist/wishlist-button";
 import { Award, Shield, Truck, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+type Props = {
+  params: Promise<{ handle: string }>;
+};
+
 export async function generateMetadata(
-  { params }: { params: { handle: string } },
+  { params }: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  const { handle } = await params;
   const product = await prisma.product.findUnique({
-    where: { handle: params.handle },
+    where: { handle },
   });
 
   if (!product) {
@@ -37,34 +42,33 @@ export async function generateMetadata(
   };
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: { handle: string };
-}) {
+export default async function ProductPage({ params }: Props) {
+  const { handle } = await params;
   const session = await getServerSession(authOptions);
 
   const [product, cart, wishlist] = await Promise.all([
     prisma.product.findUnique({
-      where: { handle: params.handle },
+      where: { handle },
       include: {
         variants: {
-          orderBy: { id: 'asc' }
+          orderBy: { id: "asc" },
         },
       },
     }),
     getCart(),
-    session?.user?.id ? prisma.wishlist.findUnique({
-      where: { userId: session.user.id },
-      select: { items: { select: { productId: true } } },
-    }) : Promise.resolve(null),
+    session?.user?.id
+      ? prisma.wishlist.findUnique({
+          where: { userId: session.user.id },
+          select: { items: { select: { productId: true } } },
+        })
+      : Promise.resolve(null),
   ]);
 
   if (!product || product.variants.length === 0) {
     notFound();
   }
 
-  const isWished = !!wishlist?.items.some(item => item.productId === product.id);
+  const isWished = !!wishlist?.items.some((item) => item.productId === product.id);
 
   return (
     <div className="bg-background min-h-screen">
@@ -72,11 +76,17 @@ export default async function ProductPage({
       <div className="bg-white border-b border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <nav className="flex items-center space-x-2 text-sm">
-            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Home
             </Link>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <Link href="/products" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/products"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Products
             </Link>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -100,7 +110,7 @@ export default async function ProductPage({
                 priority
               />
             </div>
-            
+
             {/* Thumbnail Gallery (placeholder for future multi-image support) */}
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
@@ -124,10 +134,8 @@ export default async function ProductPage({
           <div className="space-y-8">
             {/* Title and Price */}
             <div className="space-y-4">
-              <h1 className="text-3xl md:text-4xl font-light text-foreground">
-                {product.name}
-              </h1>
-              
+              <h1 className="text-3xl md:text-4xl font-light text-foreground">{product.name}</h1>
+
               {/* Trust Badges */}
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">
@@ -155,9 +163,7 @@ export default async function ProductPage({
             {/* Description */}
             <div className="prose prose-sm max-w-none">
               <h2 className="text-lg font-medium text-foreground mb-3">Description</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
+              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
             </div>
 
             {/* Features */}

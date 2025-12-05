@@ -1,8 +1,18 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next"; // 1. Import Viewport type
 import AuthSessionProvider from "@/components/providers/session-provider";
 import { Toaster } from "sonner";
 import "./globals.css";
+
+// 2. Separate Viewport export
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  themeColor: "#5e503f", // Moved from <head>
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
@@ -45,25 +55,17 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  // ADD: Viewport configuration for mobile
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    viewportFit: "cover", // Support for notched devices
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
   },
+  // REMOVED: viewport object from here
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        {/* PWA Meta Tags for Mobile */}
-        <meta name="theme-color" content="#5e503f" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      </head>
+      <head>{/* REMOVED: Manual meta tags in favor of the exports above */}</head>
       <body className="safe-top safe-bottom">
         <AuthSessionProvider>{children}</AuthSessionProvider>
         <Toaster

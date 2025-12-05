@@ -47,12 +47,13 @@ export default async function OrderConfirmationPage({
   params,
   searchParams,
 }: {
-  params: { orderId: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+  params: Promise<{ orderId: string }>; // Change to Promise
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>; // Change to Promise
 }) {
-  const { orderId } = params;
-  const token = typeof searchParams.token === "string" ? searchParams.token : undefined;
-
+  const { orderId } = await params; // Await params
+  const resolvedSearchParams = await searchParams; // Await searchParams
+  const token =
+    typeof resolvedSearchParams.token === "string" ? resolvedSearchParams.token : undefined;
   if (!orderId) {
     return notFound();
   }

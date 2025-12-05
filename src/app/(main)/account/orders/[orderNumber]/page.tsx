@@ -10,16 +10,20 @@ import RefundSection from "@/components/ui/account/refund-section"; // Updated i
 
 type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
 
-export default async function OrderDetailsPage({ params }: { params: { orderNumber: string } }) {
+export default async function OrderDetailsPage({
+  params,
+}: {
+  params: Promise<{ orderNumber: string }>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     redirect("/signin");
   }
-
+  const { orderNumber } = await params;
   // Use `findFirst` to query by a non-unique field securely.
   const order = await prisma.order.findFirst({
     where: {
-      orderNumber: params.orderNumber, // Now correctly matches the folder name
+      orderNumber: orderNumber, // Now correctly matches the folder name
       userId: session.user.id, // Ensures the user owns this order
     },
     include: {
