@@ -1,7 +1,7 @@
 // src/app/(main)/signin/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
@@ -18,7 +18,7 @@ const Schema = z.object({
 });
 type FormData = z.infer<typeof Schema>;
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const search = useSearchParams();
   const { data: session, status } = useSession();
@@ -92,9 +92,7 @@ export default function SignInPage() {
               {...register("email")}
               className={errors.email ? "border-burgundy focus-visible:ring-burgundy/20" : ""}
             />
-            {errors.email && (
-              <p className="text-xs text-burgundy">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-xs text-burgundy">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -116,9 +114,7 @@ export default function SignInPage() {
               {...register("password")}
               className={errors.password ? "border-burgundy focus-visible:ring-burgundy/20" : ""}
             />
-            {errors.password && (
-              <p className="text-xs text-burgundy">{errors.password.message}</p>
-            )}
+            {errors.password && <p className="text-xs text-burgundy">{errors.password.message}</p>}
           </div>
 
           {apiError && (
@@ -151,5 +147,19 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   );
 }
