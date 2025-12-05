@@ -1,4 +1,3 @@
-// src/components/ui/wishlist/wishlist-button.tsx
 "use client";
 
 import { useState, useTransition } from "react";
@@ -16,10 +15,12 @@ export default function WishlistButton({ productId, initialIsWished }: WishlistB
   const [isWished, setIsWished] = useState(initialIsWished);
   const [isPending, startTransition] = useTransition();
 
-  const handleToggle = async () => {
-    // Optimistic update
-    const newState = !isWished;
-    setIsWished(newState);
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent link navigation if inside a product card
+
+    // Optimistic UI update
+    const previousState = isWished;
+    setIsWished(!isWished);
 
     startTransition(async () => {
       try {
@@ -30,8 +31,8 @@ export default function WishlistButton({ productId, initialIsWished }: WishlistB
           toast.info(result.message);
         }
       } catch (error) {
-        // Revert on error
-        setIsWished(!newState);
+        // Revert UI on failure
+        setIsWished(previousState);
         toast.error("Failed to update wishlist. Please try again.");
       }
     });
@@ -39,12 +40,9 @@ export default function WishlistButton({ productId, initialIsWished }: WishlistB
 
   return (
     <button
-      onClick={(e) => {
-        e.preventDefault();
-        handleToggle();
-      }}
+      onClick={handleToggle}
       disabled={isPending}
-      className="group flex items-center justify-center p-2 rounded-full hover:bg-secondary/10 transition-all duration-200"
+      className="group flex items-center justify-center p-2 rounded-full hover:bg-secondary/10 transition-all duration-200 tap-target"
       aria-label={isWished ? "Remove from wishlist" : "Add to wishlist"}
     >
       <Heart
