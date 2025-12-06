@@ -65,13 +65,13 @@ export default async function Image({ params }: { params: Promise<{ handle: stri
               padding: "40px",
             }}
           >
-            <img
-              src={imageUrl}
-              alt={product.name}
+            <div
               style={{
                 width: "100%",
                 height: "100%",
-                objectFit: "cover",
+                backgroundImage: `url(${imageUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
                 borderRadius: "24px",
                 boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
               }}
