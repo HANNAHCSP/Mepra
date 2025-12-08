@@ -54,14 +54,7 @@ export default function Footer() {
                   Terms and Conditions
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/disclaimer"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Disclaimer
-                </Link>
-              </li>
+
               <li>
                 <Link
                   href="/privacy"
@@ -102,14 +95,6 @@ export default function Footer() {
                   className="text-white/70 hover:text-secondary transition-colors duration-200"
                 >
                   Awards
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/catalog"
-                  className="text-white/70 hover:text-secondary transition-colors duration-200"
-                >
-                  Catalog
                 </Link>
               </li>
 

@@ -156,19 +156,14 @@ export default function Page() {
             {[
               {
                 title: "Flatware",
-                image: "/placeholder.svg",
+                image: "/realv2.png",
                 items: "24 Collections",
                 link: "/flatware",
               },
-              {
-                title: "Cookware",
-                image: "/placeholder.svg",
-                items: "18 Collections",
-                link: "/cookware",
-              },
+
               {
                 title: "Serveware",
-                image: "/placeholder.svg",
+                image: "/Plate2.webp",
                 items: "32 Collections",
                 link: "/serveware",
               },

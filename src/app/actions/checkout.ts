@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
-// --- EXISTING ADDRESS ACTIONS (Keep these) ---
+// --- EXISTING ADDRESS ACTIONS ---
 
 export async function saveShippingAddress(
   prevState: ShippingAddressFormState,
@@ -25,7 +25,38 @@ export async function saveShippingAddress(
     };
   }
 
+  const session = await getServerSession(authOptions);
+
   try {
+    // 1. If user is logged in, save/update this address in the DB
+    if (session?.user?.id) {
+      // Check if this specific address already exists to avoid duplicates
+      // (Optional: simplified check matching street + zip)
+      const existingAddress = await prisma.address.findFirst({
+        where: {
+          userId: session.user.id,
+          street: parsed.data.address,
+          zipCode: parsed.data.zipCode,
+        },
+      });
+
+      if (!existingAddress) {
+        await prisma.address.create({
+          data: {
+            userId: session.user.id,
+            street: parsed.data.address,
+            city: parsed.data.city,
+            state: parsed.data.state,
+            zipCode: parsed.data.zipCode,
+            country: parsed.data.country,
+            // You can add logic to set isDefault if it's their first address
+            isDefault: (await prisma.address.count({ where: { userId: session.user.id } })) === 0,
+          },
+        });
+      }
+    }
+
+    // 2. Save to Cookie (Required for the current checkout flow)
     const addressJson = JSON.stringify(parsed.data);
     (await cookies()).set("shippingAddress", addressJson, {
       httpOnly: true,
@@ -34,6 +65,7 @@ export async function saveShippingAddress(
       path: "/",
     });
   } catch (error) {
+    console.error("Failed to save address:", error);
     return {
       message: "Failed to save address. Please try again.",
       success: false,
@@ -61,6 +93,7 @@ export async function selectSavedAddress(addressId: string) {
     throw new Error("Address not found or you do not have permission to use it.");
   }
 
+  // Construct the payload expected by the checkout cookie
   const shippingAddressPayload = {
     email: session.user.email,
     firstName: session.user.name?.split(" ")[0] || "",
@@ -70,6 +103,9 @@ export async function selectSavedAddress(addressId: string) {
     state: address.state,
     zipCode: address.zipCode,
     country: address.country,
+    // Add default values for optional fields if needed
+    phone: "",
+    apartment: "",
   };
 
   try {
@@ -94,7 +130,6 @@ const ShippingMethodSchema = z.object({
   methodId: z.enum(["standard", "express"]),
 });
 
-// 1. Action for "Clicking" the radio button (Updates UI without redirect)
 export async function updateShippingMethod(methodId: string) {
   const parsed = ShippingMethodSchema.safeParse({ methodId });
 
@@ -105,12 +140,10 @@ export async function updateShippingMethod(methodId: string) {
       sameSite: "lax",
       path: "/",
     });
-    // This tells the Layout to re-fetch cookies and update the Summary price
     revalidatePath("/checkout");
   }
 }
 
-// 2. Action for "Continue" button (Redirects to next step)
 export async function saveShippingMethodAndContinue(formData: FormData) {
   const parsed = ShippingMethodSchema.safeParse({
     methodId: formData.get("methodId"),

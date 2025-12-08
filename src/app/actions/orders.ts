@@ -11,7 +11,7 @@ import { decrementInventory } from "./inventory";
 import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from "@/lib/email";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
+import { sendGuestUpgradeEmail } from "@/lib/email";
 import { getShippingOptions } from "@/lib/shipping-rates";
 
 export async function createOrder() {
@@ -149,11 +149,19 @@ export async function issueUpgradeInviteAction(orderId: string, email: string) {
       return { success: false, error: "An account with this email already exists." };
     }
 
+    // Fetch order to get the Order Number for the email
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { orderNumber: true },
+    });
+
+    if (!order) {
+      return { success: false, error: "Order not found." };
+    }
+
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = addHours(new Date(), 24);
 
-    // Insert the invite using a parameterized raw query so we don't need
-    // to rely on a generated delegate or use an `any` cast.
     await prisma.guestUpgradeInvite.create({
       data: {
         orderId,
@@ -163,7 +171,8 @@ export async function issueUpgradeInviteAction(orderId: string, email: string) {
       },
     });
 
-    console.log(`Generated upgrade link for ${email}: /upgrade-account?token=${token}`);
+    // Send the actual email
+    await sendGuestUpgradeEmail(email, token, order.orderNumber);
 
     return { success: true };
   } catch (error) {

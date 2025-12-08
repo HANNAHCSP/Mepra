@@ -1,14 +1,16 @@
-// src/lib/email.ts
 import { Resend } from "resend";
 import { Order, OrderItem } from "@prisma/client";
-import { OrderConfirmationEmail } from "@/components/ui/email/order-confirmation";
-import { RefundStatusEmail } from "@/components/ui/email/refund-status";
 import { render } from "@react-email/render";
 import { ShippingAddressSchema } from "@/lib/zod-schemas";
 
+// Import your email components
+import { OrderConfirmationEmail } from "@/components/ui/email/order-confirmation";
+import { RefundStatusEmail } from "@/components/ui/email/refund-status";
+import { ResetPasswordEmail } from "@/components/ui/email/reset-password";
+import GuestUpgradeEmail from "@/components/ui/email/guest-upgrade";
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Define a type that includes the items, as standard Prisma Order doesn't have them
 type OrderWithItems = Order & {
   items: OrderItem[];
 };
@@ -17,18 +19,15 @@ export async function sendOrderConfirmationEmail(order: OrderWithItems): Promise
   if (!process.env.RESEND_API_KEY) {
     console.warn("⚠️ RESEND_API_KEY is missing. Email simulation:");
     console.log(`To: ${order.customerEmail}`);
-    console.log(`Subject: Order #${order.orderNumber} Confirmed`);
     return;
   }
 
   try {
-    // 1. Safely parse the JSON from the database
     const rawAddress =
       typeof order.shippingAddress === "string"
         ? JSON.parse(order.shippingAddress)
         : order.shippingAddress;
 
-    // 2. Validate it against your schema to get proper types (removes 'any')
     const parseResult = ShippingAddressSchema.safeParse(rawAddress);
 
     if (!parseResult.success) {
@@ -38,29 +37,28 @@ export async function sendOrderConfirmationEmail(order: OrderWithItems): Promise
 
     const shippingAddress = parseResult.data;
 
-    // Render the React template to HTML
+    // Use JSX syntax here
     const emailHtml = await render(
-      OrderConfirmationEmail({
-        orderNumber: order.orderNumber,
-        customerName: shippingAddress.firstName || "Customer",
-        items: order.items.map((item) => ({
+      <OrderConfirmationEmail
+        orderNumber={order.orderNumber}
+        customerName={shippingAddress.firstName || "Customer"}
+        items={order.items.map((item) => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-        })),
-        total: order.total,
-        shippingAddress: {
+        }))}
+        total={order.total}
+        shippingAddress={{
           street: shippingAddress.address,
           city: shippingAddress.city,
           zipCode: shippingAddress.zipCode,
           country: shippingAddress.country,
-        },
-      })
+        }}
+      />
     );
 
-    // Send the email
     await resend.emails.send({
-      from: "Mepra Store <onboarding@resend.dev>", // Use your verified domain in production
+      from: "Mepra Store <onboarding@resend.dev>",
       to: order.customerEmail,
       subject: `Your Mepra Order #${order.orderNumber}`,
       html: emailHtml,
@@ -76,10 +74,9 @@ export async function notifyStaffOfNewOrder(order: OrderWithItems): Promise<void
   if (!process.env.RESEND_API_KEY) return;
 
   try {
-    // Simple text email for staff
     await resend.emails.send({
       from: "Mepra System <onboarding@resend.dev>",
-      to: "admin@mepra-store.com", // Replace with your real admin email
+      to: "admin@mepra-store.com",
       subject: `🔔 New Order: ${order.orderNumber}`,
       html: `<p>New order received for <strong>$${(order.total / 100).toFixed(2)}</strong>.</p><p>Check the <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders/${order.id}">Admin Dashboard</a> for details.</p>`,
     });
@@ -101,13 +98,14 @@ export async function sendRefundStatusEmail(data: {
   }
 
   try {
+    // Use JSX syntax here
     const emailHtml = await render(
-      RefundStatusEmail({
-        orderNumber: data.orderNumber,
-        customerName: data.customerName,
-        amount: data.amount,
-        status: data.status,
-      })
+      <RefundStatusEmail
+        orderNumber={data.orderNumber}
+        customerName={data.customerName}
+        amount={data.amount}
+        status={data.status}
+      />
     );
 
     await resend.emails.send({
@@ -118,5 +116,66 @@ export async function sendRefundStatusEmail(data: {
     });
   } catch (error) {
     console.error("Failed to send refund status email:", error);
+  }
+}
+
+export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(
+      `[DEV EMAIL] Password Reset Link: ${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`
+    );
+    return;
+  }
+
+  try {
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+
+    // Use JSX syntax here - This fixes the TypeError
+    const emailHtml = await render(<ResetPasswordEmail resetLink={resetLink} />);
+
+    await resend.emails.send({
+      from: "Mepra Support <onboarding@resend.dev>",
+      to: email,
+      subject: "Reset your password",
+      html: emailHtml,
+    });
+
+    console.log(`✅ Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error("❌ Failed to send password reset email:", error);
+    // Rethrow so the frontend knows it failed
+    throw new Error("Failed to send email provider request");
+  }
+}
+
+export async function sendGuestUpgradeEmail(
+  email: string,
+  token: string,
+  orderNumber: string
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(
+      `[DEV EMAIL] Upgrade Link for ${email}: ${process.env.NEXT_PUBLIC_APP_URL}/upgrade-account?token=${token}`
+    );
+    return;
+  }
+
+  try {
+    const upgradeLink = `${process.env.NEXT_PUBLIC_APP_URL}/upgrade-account?token=${token}`;
+
+    const emailHtml = await render(
+      <GuestUpgradeEmail upgradeLink={upgradeLink} orderNumber={orderNumber} />
+    );
+
+    await resend.emails.send({
+      from: "Mepra Support <onboarding@resend.dev>",
+      to: email,
+      subject: `Action Required: Save Order #${orderNumber}`,
+      html: emailHtml,
+    });
+
+    console.log(`✅ Upgrade email sent to ${email}`);
+  } catch (error) {
+    console.error("❌ Failed to send upgrade email:", error);
   }
 }
