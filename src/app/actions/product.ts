@@ -17,6 +17,7 @@ export async function searchProducts(params: ProductSearchParams) {
 
   // 1. Dynamic Filtering Logic
   const where: Prisma.ProductWhereInput = {
+    isArchived: false,
     AND: [
       // Search Logic: Name or Description
       query

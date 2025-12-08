@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 
 export default async function ProductsPage() {
   const products = await prisma.product.findMany({
+    where: { isArchived: false },
     include: {
       variants: {
         orderBy: {

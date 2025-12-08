@@ -102,6 +102,7 @@ model Product {
   name          String
   description   String         @db.Text
   handle        String         @unique
+  isArchived    Boolean        @default(false)
   imageUrl      String?
   images        String[]
   category      String?        

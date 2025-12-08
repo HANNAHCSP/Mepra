@@ -9,5 +9,14 @@
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "cSpell.words": ["Ladura", "Mepra", "MEPRAEG", "Mepras", "serveware", "Whistleblowing"]
+  "cSpell.words": [
+    "cuid",
+    "Ladura",
+    "Mepra",
+    "MEPRAEG",
+    "Mepras",
+    "serveware",
+    "utapi",
+    "Whistleblowing"
+  ]
 }
