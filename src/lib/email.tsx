@@ -7,7 +7,8 @@ import { ShippingAddressSchema } from "@/lib/zod-schemas";
 import { OrderConfirmationEmail } from "@/components/ui/email/order-confirmation";
 import { RefundStatusEmail } from "@/components/ui/email/refund-status";
 import { ResetPasswordEmail } from "@/components/ui/email/reset-password";
-import GuestUpgradeEmail from "@/components/ui/email/guest-upgrade";
+import { GuestUpgradeEmail } from "@/components/ui/email/guest-upgrade";
+import { ContactSubmissionEmail } from "@/components/ui/email/contact-submission"; // Ensure this is imported
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -23,6 +24,7 @@ export async function sendOrderConfirmationEmail(order: OrderWithItems): Promise
   }
 
   try {
+    // Safely parse the shipping address
     const rawAddress =
       typeof order.shippingAddress === "string"
         ? JSON.parse(order.shippingAddress)
@@ -37,7 +39,6 @@ export async function sendOrderConfirmationEmail(order: OrderWithItems): Promise
 
     const shippingAddress = parseResult.data;
 
-    // Use JSX syntax here
     const emailHtml = await render(
       <OrderConfirmationEmail
         orderNumber={order.orderNumber}
@@ -76,7 +77,7 @@ export async function notifyStaffOfNewOrder(order: OrderWithItems): Promise<void
   try {
     await resend.emails.send({
       from: "Mepra System <onboarding@resend.dev>",
-      to: "admin@mepra-store.com",
+      to: "hannahelhaddad3@gmail.com", // Updated Admin Email
       subject: `🔔 New Order: ${order.orderNumber}`,
       html: `<p>New order received for <strong>$${(order.total / 100).toFixed(2)}</strong>.</p><p>Check the <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders/${order.id}">Admin Dashboard</a> for details.</p>`,
     });
@@ -98,7 +99,6 @@ export async function sendRefundStatusEmail(data: {
   }
 
   try {
-    // Use JSX syntax here
     const emailHtml = await render(
       <RefundStatusEmail
         orderNumber={data.orderNumber}
@@ -130,7 +130,6 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   try {
     const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
 
-    // Use JSX syntax here - This fixes the TypeError
     const emailHtml = await render(<ResetPasswordEmail resetLink={resetLink} />);
 
     await resend.emails.send({
@@ -143,7 +142,6 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
     console.log(`✅ Password reset email sent to ${email}`);
   } catch (error) {
     console.error("❌ Failed to send password reset email:", error);
-    // Rethrow so the frontend knows it failed
     throw new Error("Failed to send email provider request");
   }
 }
@@ -177,5 +175,42 @@ export async function sendGuestUpgradeEmail(
     console.log(`✅ Upgrade email sent to ${email}`);
   } catch (error) {
     console.error("❌ Failed to send upgrade email:", error);
+  }
+}
+
+// --- CONTACT EMAIL FUNCTION ---
+export async function sendContactEmail(data: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV EMAIL] Contact Form from ${data.email}: ${data.message}`);
+    return;
+  }
+
+  try {
+    const emailHtml = await render(
+      <ContactSubmissionEmail
+        name={data.name}
+        email={data.email}
+        subject={data.subject}
+        message={data.message}
+      />
+    );
+
+    await resend.emails.send({
+      from: "Mepra System <onboarding@resend.dev>",
+      to: "hannahelhaddad3@gmail.com", // Updated Admin Email
+      replyTo: data.email,
+      subject: `[Contact Form] ${data.subject}`,
+      html: emailHtml,
+    });
+
+    console.log(`✅ Contact email forwarded to admin.`);
+  } catch (error) {
+    console.error("❌ Failed to forward contact email:", error);
+    throw new Error("Failed to send message.");
   }
 }

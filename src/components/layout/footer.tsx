@@ -1,4 +1,3 @@
-// src/components/layout/footer.tsx
 "use client";
 import Link from "next/link";
 
@@ -54,7 +53,14 @@ export default function Footer() {
                   Terms and Conditions
                 </Link>
               </li>
-
+              <li>
+                <Link
+                  href="/disclaimer"
+                  className="text-white/70 hover:text-secondary transition-colors duration-200"
+                >
+                  Disclaimer
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/privacy"
@@ -82,7 +88,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="/history"
+                  href="/about" // This redirects to /about from the old /history link you might have had
                   className="text-white/70 hover:text-secondary transition-colors duration-200"
                 >
                   History
@@ -95,6 +101,14 @@ export default function Footer() {
                   className="text-white/70 hover:text-secondary transition-colors duration-200"
                 >
                   Awards
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/catalog"
+                  className="text-white/70 hover:text-secondary transition-colors duration-200"
+                >
+                  Catalog
                 </Link>
               </li>
 
@@ -115,7 +129,7 @@ export default function Footer() {
               Contact
             </h3>
             <div className="space-y-2 text-sm text-white/70">
-              <p>E: info@mepra-store.com</p>
+              <p>E: hannahelhaddad3@gmail.com</p>
               <p>P: +31 85 303 26 59</p>
               <p>(Mo Fr 09:00 AM 5:30 PM CEST)</p>
             </div>

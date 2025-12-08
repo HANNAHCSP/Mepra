@@ -5,6 +5,7 @@ import { Mail, Phone, MapPin, Clock, Loader2, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { submitContactFormAction } from "@/app/actions/contact"; // Import the action
 
 export default function ContactPage() {
   const [isPending, setIsPending] = useState(false);
@@ -13,15 +14,19 @@ export default function ContactPage() {
     e.preventDefault();
     setIsPending(true);
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const formData = new FormData(e.currentTarget);
+    const result = await submitContactFormAction(formData);
 
     setIsPending(false);
-    toast.success("Message sent successfully!", {
-      description: "Our concierge team will respond within 24 hours.",
-    });
 
-    (e.target as HTMLFormElement).reset();
+    if (result.success) {
+      toast.success(result.message, {
+        description: "Our concierge team will respond within 24 hours.",
+      });
+      (e.target as HTMLFormElement).reset();
+    } else {
+      toast.error(result.message);
+    }
   };
 
   return (
@@ -49,10 +54,10 @@ export default function ContactPage() {
                   <div>
                     <p className="font-medium text-foreground">Email</p>
                     <a
-                      href="mailto:info@mepra-store.com"
+                      href="mailto:hannahelhaddad3@gmail.com"
                       className="text-sm text-muted-foreground hover:text-secondary transition-colors"
                     >
-                      info@mepra-store.com
+                      hannahelhaddad3@gmail.com
                     </a>
                   </div>
                 </div>
