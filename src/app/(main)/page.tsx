@@ -1,41 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Award,
-  Sparkles,
-  TrendingUp,
-  Mail,
-  CheckCircle,
-  ShieldCheck,
-  Globe,
-  Star,
-} from "lucide-react";
+import { ArrowRight, Award, Sparkles, TrendingUp, ShieldCheck, Globe, Star } from "lucide-react";
 
 export default function Page() {
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      setSubscribed(true);
-      setEmail("");
-      setTimeout(() => setSubscribed(false), 4000);
-    }, 1500);
-  };
-
   return (
     <div className="min-h-screen bg-background font-sans selection:bg-secondary/20">
-      {/* --- HERO SECTION --- 
-          Best of: Code 1's layout/gradients + Code 1's overlapping images */}
+      {/* --- HERO SECTION --- */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
         {/* Background Atmosphere */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
@@ -80,7 +52,7 @@ export default function Page() {
               </Link>
             </div>
 
-            {/* Trust Indicators (From Code 1) */}
+            {/* Trust Indicators */}
             <div className="grid grid-cols-3 gap-8 pt-8 border-t border-border">
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -106,7 +78,7 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Images Composition (From Code 1 - it's more dynamic) */}
+          {/* Images Composition */}
           <div className="relative h-[600px] lg:h-[700px] hidden lg:block">
             {/* Main Large Image */}
             <div className="absolute top-0 right-0 w-[75%] h-[70%] rounded-2xl overflow-hidden shadow-2xl border-4 border-white transform hover:scale-[1.02] transition-transform duration-700 z-10">
@@ -137,8 +109,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* --- FEATURED COLLECTIONS --- 
-          Best of: Code 2's clean cards + Code 1's hover scale */}
+      {/* --- FEATURED COLLECTIONS --- */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16 space-y-4">
@@ -203,8 +174,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* --- QUALITY PROMISE ---
-          Best of: Code 2's specific features section (adds value) */}
+      {/* --- QUALITY PROMISE --- */}
       <section className="py-24 bg-stone-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-12 text-center">
@@ -239,58 +209,6 @@ export default function Page() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* --- NEWSLETTER ---
-          Best of: Code 1's visual gradient + Code 2's functional logic */}
-      <section className="py-24 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground relative overflow-hidden">
-        {/* Decor */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <h2 className="text-4xl font-light mb-6">Join Our Community</h2>
-          <p className="text-primary-foreground/80 mb-10 text-lg max-w-2xl mx-auto">
-            Subscribe to receive exclusive offers, new product launches, and Italian craftsmanship
-            stories directly to your inbox.
-          </p>
-
-          <form onSubmit={handleSubscribe} className="max-w-md mx-auto relative">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1 group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                <input
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading || subscribed}
-                  className="w-full pl-12 pr-6 py-4 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-white/20 transition-all disabled:opacity-80"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading || subscribed}
-                className="px-8 py-4 bg-secondary text-white font-semibold rounded-lg hover:bg-secondary/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-80 disabled:cursor-not-allowed min-w-[140px] flex items-center justify-center"
-              >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : subscribed ? (
-                  <span className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5" /> Done
-                  </span>
-                ) : (
-                  "Subscribe"
-                )}
-              </button>
-            </div>
-
-            <p className="mt-4 text-sm text-primary-foreground/60 flex items-center justify-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Your privacy matters. We&apos;ll never share your email.
-            </p>
-          </form>
         </div>
       </section>
     </div>

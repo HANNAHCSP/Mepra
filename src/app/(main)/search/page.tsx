@@ -29,13 +29,33 @@ export default async function SearchPage(props: {
   const maxPrice = typeof searchParams.max === "string" ? searchParams.max : undefined;
   const sort = typeof searchParams.sort === "string" ? searchParams.sort : "newest";
 
-  const products = await searchProducts({ query, minPrice, maxPrice, sort });
+  // Handle array params (categories/collections)
+  const categories =
+    typeof searchParams.category === "string"
+      ? [searchParams.category]
+      : Array.isArray(searchParams.category)
+        ? searchParams.category
+        : undefined;
+
+  const collections =
+    typeof searchParams.collection === "string"
+      ? [searchParams.collection]
+      : Array.isArray(searchParams.collection)
+        ? searchParams.collection
+        : undefined;
+
+  const products = await searchProducts({
+    query,
+    minPrice,
+    maxPrice,
+    sort,
+    categories,
+    collections,
+  });
 
   return (
-    // Background is now the variable (Off-White)
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
         <div className="flex flex-col gap-6 border-b border-border pb-8 mb-8">
           <h1 className="text-3xl font-light tracking-tight text-foreground">
             {query ? (
@@ -44,7 +64,7 @@ export default async function SearchPage(props: {
                 <span className="font-semibold italic text-primary">&quot;{query}&quot;</span>
               </>
             ) : (
-              "All Products"
+              "Our Collection"
             )}
           </h1>
           <div className="w-full max-w-xl">
@@ -65,14 +85,13 @@ export default async function SearchPage(props: {
                 </div>
                 <h3 className="text-lg font-medium text-foreground">No products found</h3>
                 <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
-                  We couldn&apos;t find anything matching your criteria. Try different keywords or
-                  remove some filters.
+                  We couldn&apos;t find anything matching your filters. Try removing some filters or
+                  different keywords.
                 </p>
                 <div className="mt-6">
                   <Link
                     href="/search"
-                    // Primary button style
-                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
                   >
                     Clear all filters
                   </Link>
@@ -82,24 +101,28 @@ export default async function SearchPage(props: {
               <div className="grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8">
                 {products.map((product) => (
                   <Link key={product.id} href={`/products/${product.handle}`} className="group">
-                    {/* Card background is white to stand out from off-white page */}
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-lg bg-white border border-border relative">
                       <Image
                         src={product.imageUrl || "/placeholder.svg"}
                         alt={product.name}
                         fill
-                        className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                        className="object-cover object-center transition-transform duration-500 group-hover:scale-110"
                         sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                       />
+                      {/* Optional: Add badge if product has collection */}
+                      {product.collection && (
+                        <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-bold uppercase tracking-wider text-secondary rounded">
+                          {product.collection}
+                        </div>
+                      )}
                     </div>
                     <div className="mt-4 flex justify-between items-start">
                       <div>
-                        {/* Hover text becomes Gold/Secondary */}
                         <h3 className="text-sm font-medium text-foreground group-hover:text-secondary transition-colors">
                           {product.name}
                         </h3>
                         <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
-                          {product.description}
+                          {product.category || product.description}
                         </p>
                       </div>
                       {product.variants[0] && (

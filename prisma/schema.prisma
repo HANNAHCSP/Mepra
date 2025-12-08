@@ -59,6 +59,7 @@ model User {
   sessions  Session[]
   wishlist  Wishlist?
   refunds   Refund[]
+  reviews       Review[]
 }
 
 model Account {
@@ -102,10 +103,15 @@ model Product {
   description   String         @db.Text
   handle        String         @unique
   imageUrl      String?
+  images        String[]
+  category      String?        
+  collection    String?   
+  material      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   variants      ProductVariant[]
   wishlistItems WishlistItem[]
+  reviews       Review[]
 }
 
 model ProductVariant {
@@ -244,4 +250,23 @@ model GuestUpgradeInvite {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5
+  comment   String?  @db.Text
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([userId])
 }
