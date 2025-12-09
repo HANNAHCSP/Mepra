@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 import { ShippingAddressSchema } from "@/lib/zod-schemas";
 import RefundPanel from "@/components/ui/admin/refund-panel";
-import FulfillmentCard from "@/components/ui/admin/fulfillment-card"; // <--- Import
-import { ArrowLeft, Mail, MapPin, Phone } from "lucide-react";
+import FulfillmentCard from "@/components/ui/admin/fulfillment-card";
+import { ArrowLeft, Mail, MapPin, Phone, Printer } from "lucide-react"; // Import Printer
+import { Button } from "@/components/ui/button"; // Import Button
 import Link from "next/link";
 
 type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
@@ -44,28 +45,37 @@ export default async function AdminOrderDetailsPage({
 
   return (
     <div className="space-y-8">
-      {/* Breadcrumb / Back */}
-      <div className="flex items-center gap-4">
-        <Link href="/admin/orders" className="p-2 rounded-full hover:bg-accent transition-colors">
-          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-light text-foreground flex items-center gap-3">
-            Order #{order.orderNumber}
-            <Badge status={order.status}>{order.status}</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Placed on{" "}
-            {new Date(order.createdAt).toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
+      {/* Breadcrumb / Back / Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/admin/orders" className="p-2 rounded-full hover:bg-accent transition-colors">
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-light text-foreground flex items-center gap-3">
+              Order #{order.orderNumber}
+              <Badge status={order.status}>{order.status}</Badge>
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Placed on{" "}
+              {new Date(order.createdAt).toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          </div>
         </div>
+
+        {/* Invoice Button */}
+        <Link href={`/orders/${order.id}/invoice`} target="_blank">
+          <Button variant="outline" size="sm" className="gap-2">
+            <Printer className="w-4 h-4" /> Invoice
+          </Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -126,7 +136,7 @@ export default async function AdminOrderDetailsPage({
 
         {/* Sidebar Info */}
         <div className="space-y-6">
-          {/* Fulfillment Section (Only shows if order is confirmed/shipped) */}
+          {/* Fulfillment Section */}
           {(order.status === "CONFIRMED" ||
             order.status === "SHIPPED" ||
             order.status === "DELIVERED") && <FulfillmentCard order={order} />}

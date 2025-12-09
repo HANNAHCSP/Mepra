@@ -239,3 +239,24 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+@media print {
+  /* Hide Navbar, Footer, and other UI elements when printing */
+  nav,
+  footer,
+  button,
+  a {
+    display: none !important;
+  }
+
+  /* Ensure the invoice content is visible */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Reset background colors for saving ink */
+  body,
+  .min-h-screen {
+    background-color: white !important;
+    height: auto !important;
+  }
+}
