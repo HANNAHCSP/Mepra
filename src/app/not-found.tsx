@@ -1,39 +1,59 @@
 import Link from "next/link";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Search } from "lucide-react";
+import Navbar from "@/components/ui/navbar";
+import Footer from "@/components/layout/footer";
+import CartButton from "@/components/ui/cart/cart-button";
+import WishlistNavButton from "@/components/ui/wishlist/wishlist-nav-button";
+import { getStoreSettings } from "@/app/actions/settings";
 
-export default function NotFound() {
+export default async function NotFound() {
+  // We fetch settings so the Navbar still shows the correct Announcement
+  const settings = await getStoreSettings();
+
   return (
-    // Note: Root not-found does not automatically inherit layout,
-    // but styling will work if globals.css is loaded.
-    <div className="min-h-screen bg-[#f2f4f3] flex flex-col items-center justify-center px-4 text-center">
-      <div className="space-y-6 max-w-md">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-[#a9927d]/10 rounded-full">
-          <AlertCircle className="w-10 h-10 text-[#a9927d]" />
+    <div className="flex flex-col min-h-screen">
+      {/* 1. Header (So user isn't trapped) */}
+      <Navbar
+        cart={<CartButton />}
+        wishlist={<WishlistNavButton />}
+        announcement={settings.announcementBar}
+      />
+
+      {/* 2. Main Content */}
+      <main className="flex-grow flex flex-col items-center justify-center text-center px-4 py-20 bg-stone-50">
+        <div className="space-y-6 max-w-lg">
+          {/* Aesthetic 404 Visual */}
+          <div className="text-9xl font-light text-stone-200 select-none">404</div>
+
+          <h1 className="text-3xl font-light text-foreground -mt-10 relative z-10">
+            Page Not Found
+          </h1>
+
+          <p className="text-muted-foreground leading-relaxed">
+            We apologize, but the piece you are looking for does not exist or has been moved. Please
+            allow us to guide you back to our collection.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Link href="/">
+              <Button size="lg" className="min-w-[160px]">
+                Return Home
+              </Button>
+            </Link>
+
+            <Link href="/search">
+              <Button variant="outline" size="lg" className="min-w-[160px] gap-2">
+                <Search className="w-4 h-4" />
+                Search Catalog
+              </Button>
+            </Link>
+          </div>
         </div>
+      </main>
 
-        <h1 className="text-5xl font-light text-[#5e503f]">404</h1>
-        <h2 className="text-2xl font-medium text-[#5e503f]">Page Not Found</h2>
-
-        <p className="text-[#968775]">
-          The page you are looking for might have been removed, had its name changed, or is
-          temporarily unavailable.
-        </p>
-
-        <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center h-11 px-8 rounded-md bg-[#5e503f] text-[#f2f4f3] font-medium transition-colors hover:bg-[#5e503f]/90"
-          >
-            Return Home
-          </Link>
-          <Link
-            href="/products"
-            className="inline-flex items-center justify-center h-11 px-8 rounded-md border-2 border-[#dcd6d0] bg-white text-[#5e503f] font-medium transition-colors hover:bg-[#f9f7f5]"
-          >
-            Browse Store
-          </Link>
-        </div>
-      </div>
+      {/* 3. Footer */}
+      <Footer />
     </div>
   );
 }

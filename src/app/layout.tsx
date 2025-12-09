@@ -15,53 +15,38 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // 1. Add this line:
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+
   title: {
-    default: "Mepra | MepraEG- Official Store",
-    template: "%s | Mepra ",
+    default: "Mepra | The Luxury Art of Fine Living",
+    template: "%s | Mepra",
   },
-  description:
-    "Official store for MepraEG, offering Italian-made luxury flatware, cookware, and serveware since 1947. Discover timeless design and exceptional quality.",
+  description: "Discover Italian craftsmanship since 1947. Luxury flatware, serveware, and kitchenware designed to transform everyday moments into extraordinary experiences.",
+  keywords: ["Mepra", "Italian Flatware", "Luxury Cutlery", "Silverware", "Kitchenware", "Made in Italy"],
+  authors: [{ name: "Mepra Egypt" }],
+  creator: "Mepra",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon-96x96.png",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
-    title: "Mepra | MepraEG- Official Store",
-    description: "Experience Italian craftsmanship with Mepra's luxury collections.",
-    url: "/",
-    siteName: "MepraEG",
+    type: "website",
+    locale: "en_US",
+    // You can remove 'url' here as it will now inherit from metadataBase
+    siteName: "Mepra Egypt",
     images: [
       {
-        url: "/opengraph-image.png",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
+        alt: "Mepra Luxury Flatware",
       },
     ],
-    locale: "en_EG",
-    type: "website",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Mepra | MepraEG- Official Store",
-    description:
-      "Discover timeless Italian design and exceptional quality with Mepra's luxury collections.",
-    images: ["/opengraph-image.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-  },
-  // REMOVED: viewport object from here
+  manifest: "/site.webmanifest",
 };
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">

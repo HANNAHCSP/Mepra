@@ -1,11 +1,27 @@
 import { prisma } from "@/lib/prisma";
 import { Mail, Calendar } from "lucide-react";
 import Link from "next/link";
+import AdminSearch from "@/components/ui/admin/admin-search";
 
-export default async function AdminCustomersPage() {
-  // Fetch users with their order count and total spend
+export default async function AdminCustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+
   const users = await prisma.user.findMany({
-    where: { role: "user" },
+    where: {
+      role: "user",
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
     include: {
       _count: {
         select: { orders: true },
@@ -20,9 +36,14 @@ export default async function AdminCustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-light text-primary">Clientele</h1>
-        <p className="text-muted-foreground mt-1">Manage and view registered customer accounts.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-light text-primary">Clientele</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage and view registered customer accounts.
+          </p>
+        </div>
+        <AdminSearch placeholder="Search name or email..." />
       </div>
 
       <div className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
@@ -83,7 +104,7 @@ export default async function AdminCustomersPage() {
               {users.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                    No registered customers found.
+                    No customers found matching &quot;{q}&quot;.
                   </td>
                 </tr>
               )}

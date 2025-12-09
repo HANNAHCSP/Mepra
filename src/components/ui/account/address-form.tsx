@@ -1,51 +1,88 @@
-'use client';
+"use client";
 
-import { useFormStatus } from 'react-dom';
-import { saveAddress } from '@/app/actions/account';
-import { toast } from 'sonner';
-import { useRef } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useActionState, useEffect } from "react"; // Changed useFormStatus to useActionState hook pattern
+import { useFormStatus } from "react-dom";
+import { saveAddress } from "@/app/actions/account";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import type { Address } from "@prisma/client";
 
-function SubmitButton() {
+function SubmitButton({ isEditing }: { isEditing: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Saving...' : 'Save Address'}
+      {pending ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : isEditing ? (
+        "Update Address"
+      ) : (
+        "Save Address"
+      )}
     </Button>
   );
 }
 
-export function AddressForm() {
-  const formRef = useRef<HTMLFormElement>(null);
+// Update props to accept address data
+export function AddressForm({ address, onSuccess }: { address?: Address; onSuccess?: () => void }) {
+  // Note: We need to wrap the server action to handle the toast in the component
+  const handleSubmit = async (formData: FormData) => {
+    const result = await saveAddress(formData);
 
-  const handleAction = async (formData: FormData) => {
-    try {
-      await saveAddress(formData);
-      toast.success('Address saved successfully!');
-      formRef.current?.reset();
-    } catch (error) {
-      toast.error('Failed to save address. Please check your input.');
+    if (result.success) {
+      toast.success(result.message);
+      if (onSuccess) onSuccess();
+    } else {
+      toast.error(result.message);
     }
   };
 
   return (
-    <form ref={formRef} action={handleAction} className="space-y-4 p-4 border rounded-lg bg-gray-50">
-      <h3 className="text-lg font-semibold">Add New Address</h3>
+    <form action={handleSubmit} className="space-y-4">
+      {/* Hidden ID field for updates */}
+      {address && <input type="hidden" name="addressId" value={address.id} />}
+
       <div>
-        <Input name="street" placeholder="Street Address" required />
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Street
+        </label>
+        <Input name="street" defaultValue={address?.street} placeholder="123 Main St" required />
       </div>
-      <div>
-        <Input name="city" placeholder="City" required />
-      </div>
-       <div>
-        <Input name="state" placeholder="State / Province" required />
-      </div>
+
       <div className="grid grid-cols-2 gap-4">
-        <Input name="zipCode" placeholder="ZIP / Postal Code" required />
-        <Input name="country" placeholder="Country" required />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            City
+          </label>
+          <Input name="city" defaultValue={address?.city} placeholder="Cairo" required />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            State
+          </label>
+          <Input name="state" defaultValue={address?.state} placeholder="Cairo" required />
+        </div>
       </div>
-      <SubmitButton />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Zip Code
+          </label>
+          <Input name="zipCode" defaultValue={address?.zipCode} placeholder="11511" required />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Country
+          </label>
+          <Input name="country" defaultValue={address?.country} placeholder="Egypt" required />
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <SubmitButton isEditing={!!address} />
+      </div>
     </form>
   );
 }
