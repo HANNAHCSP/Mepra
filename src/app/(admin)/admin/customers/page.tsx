@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { Mail, Package, Calendar } from "lucide-react";
+import { Mail, Calendar } from "lucide-react";
+import Link from "next/link";
 
 export default async function AdminCustomersPage() {
   // Fetch users with their order count and total spend
@@ -47,7 +48,13 @@ export default async function AdminCustomersPage() {
                         <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary text-xs font-bold">
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </div>
-                        {user.name || "No Name Provided"}
+                        {/* Link to Customer Details Page */}
+                        <Link
+                          href={`/admin/customers/${user.id}`}
+                          className="hover:text-primary hover:underline transition-all"
+                        >
+                          {user.name || "No Name Provided"}
+                        </Link>
                       </div>
                     </td>
                     <td className="px-6 py-4">
