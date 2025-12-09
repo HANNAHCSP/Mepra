@@ -164,6 +164,9 @@ model CartItem {
 model Order {
   id              String        @id @default(cuid())
   orderNumber     String        @unique
+  trackingNumber  String?
+  carrier         String?       // e.g. "DHL", "FedEx", "Aramex"
+  shippedAt       DateTime?
   userId          String?
   user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   guestId         String?
@@ -270,4 +273,14 @@ model Review {
 
   @@index([productId])
   @@index([userId])
+}
+
+model StoreSettings {
+  id              String   @id @default("default") 
+  storeName       String   @default("Mepra")
+  supportEmail    String   @default("hannahelhaddad3@gmail.com")
+  supportPhone    String   @default("+31 85 303 26 59")
+  announcementBar String   @default("Complimentary Shipping on Orders Over 1000 EGP")
+  shippingThreshold Int    @default(100000) // In cents (1000 EGP)
+  updatedAt       DateTime @updatedAt
 }

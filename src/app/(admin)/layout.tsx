@@ -1,6 +1,15 @@
 // src/app/(admin)/layout.tsx
 import Link from "next/link";
-import { LayoutDashboard, Package, Users, Settings, LogOut, Bell, ShoppingBag } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  Settings,
+  LogOut,
+  Bell,
+  ShoppingBag,
+  MessageSquare,
+} from "lucide-react";
 import LogoutButton from "@/components/ui/logout-button";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +31,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <NavLink href="/admin/orders" icon={Package} label="Orders" />
           <NavLink href="/admin/products" icon={ShoppingBag} label="Products" />
           <NavLink href="/admin/customers" icon={Users} label="Clientele" />
+          <NavLink href="/admin/reviews" icon={MessageSquare} label="Reviews" />
+          <NavLink href="/admin/settings" icon={Settings} label="Settings" />
           {/* Add more links as needed */}
         </nav>
 

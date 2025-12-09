@@ -1,4 +1,3 @@
-// src/app/(admin)/admin/orders/[orderId]/page.tsx
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -6,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { z } from "zod";
 import { ShippingAddressSchema } from "@/lib/zod-schemas";
 import RefundPanel from "@/components/ui/admin/refund-panel";
+import FulfillmentCard from "@/components/ui/admin/fulfillment-card"; // <--- Import
 import { ArrowLeft, Mail, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 
@@ -126,6 +126,11 @@ export default async function AdminOrderDetailsPage({
 
         {/* Sidebar Info */}
         <div className="space-y-6">
+          {/* Fulfillment Section (Only shows if order is confirmed/shipped) */}
+          {(order.status === "CONFIRMED" ||
+            order.status === "SHIPPED" ||
+            order.status === "DELIVERED") && <FulfillmentCard order={order} />}
+
           {/* Customer Card */}
           <div className="bg-card border border-border/60 rounded-xl shadow-sm p-6 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">

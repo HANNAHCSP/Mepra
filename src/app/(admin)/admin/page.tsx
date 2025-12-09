@@ -1,4 +1,3 @@
-// src/app/(admin)/admin/page.tsx
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -6,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, Users, CreditCard, ShoppingBag, LucideIcon } from "lucide-react";
+import { getSalesData } from "@/lib/analytics"; // <--- Import logic
+import RevenueChart from "@/components/ui/admin/revenue-chart"; // <--- Import component
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
@@ -14,8 +15,9 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const [usersCount, recentOrders, totalRevenue] = await Promise.all([
-    prisma.user.count(),
+  // Fetch Data Parallelly
+  const [usersCount, recentOrders, totalRevenue, chartData] = await Promise.all([
+    prisma.user.count({ where: { role: "user" } }),
     prisma.order.findMany({
       where: { status: { not: "DRAFT" } },
       orderBy: { createdAt: "desc" },
@@ -23,9 +25,13 @@ export default async function AdminPage() {
       include: { user: { select: { name: true } } },
     }),
     prisma.order.aggregate({
-      where: { status: { not: "DRAFT" }, paymentStatus: "CAPTURED" },
+      where: {
+        status: { not: "DRAFT" },
+        paymentStatus: { in: ["CAPTURED", "AUTHORIZED"] }, // Only count paid
+      },
       _sum: { total: true },
     }),
+    getSalesData(7), // <--- Fetch chart data (Last 7 days)
   ]);
 
   const revenue = totalRevenue._sum.total ? totalRevenue._sum.total / 100 : 0;
@@ -43,21 +49,24 @@ export default async function AdminPage() {
           title="Total Revenue"
           value={`$${revenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
           icon={CreditCard}
-          trend="+12.5% from last month"
+          trend="Lifetime"
         />
         <StatsCard
           title="Active Orders"
-          value={recentOrders.length.toString()}
+          value={recentOrders.length.toString()} // Note: Ideally fetch actual count of active orders, not just length of recent array
           icon={ShoppingBag}
-          trend="+4 new today"
+          trend="Recent Activity"
         />
         <StatsCard
           title="Registered Clients"
           value={usersCount.toString()}
           icon={Users}
-          trend="Growing steadily"
+          trend="Total Users"
         />
       </div>
+
+      {/* Analytics Chart */}
+      <RevenueChart data={chartData} />
 
       {/* Recent Orders Table */}
       <div className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
@@ -102,6 +111,13 @@ export default async function AdminPage() {
                   </td>
                 </tr>
               ))}
+              {recentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                    No orders found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -1,4 +1,3 @@
-// src/components/ui/navbar.tsx
 "use client";
 
 import Link from "next/link";
@@ -18,13 +17,13 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-export default function Navbar({
-  cart,
-  wishlist,
-}: {
+interface NavbarProps {
   cart?: React.ReactNode;
   wishlist?: React.ReactNode;
-}) {
+  announcement?: string;
+}
+
+export default function Navbar({ cart, wishlist, announcement }: NavbarProps) {
   const { data: session, status } = useSession();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -76,7 +75,7 @@ export default function Navbar({
             <span>Est. 1947</span>
           </span>
           <p className="w-full lg:w-auto text-center animate-in fade-in slide-in-from-top-1 duration-700">
-            Complimentary Shipping on Orders Over 1000 EGP
+            {announcement || "Complimentary Shipping on Orders Over 1000 EGP"}
           </p>
           <span className="hidden lg:flex opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
             Lifetime Warranty
