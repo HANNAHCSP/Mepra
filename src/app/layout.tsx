@@ -1,29 +1,33 @@
-// src/app/layout.tsx
-import type { Metadata, Viewport } from "next"; // 1. Import Viewport type
+import type { Metadata, Viewport } from "next";
 import AuthSessionProvider from "@/components/providers/session-provider";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-// 2. Separate Viewport export
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
-  themeColor: "#5e503f", // Moved from <head>
+  themeColor: "#5e503f",
 };
 
 export const metadata: Metadata = {
-  // 1. Add this line:
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
-
   title: {
     default: "Mepra | The Luxury Art of Fine Living",
     template: "%s | Mepra",
   },
-  description: "Discover Italian craftsmanship since 1947. Luxury flatware, serveware, and kitchenware designed to transform everyday moments into extraordinary experiences.",
-  keywords: ["Mepra", "Italian Flatware", "Luxury Cutlery", "Silverware", "Kitchenware", "Made in Italy"],
+  description:
+    "Discover Italian craftsmanship since 1947. Luxury flatware, serveware, and kitchenware designed to transform everyday moments into extraordinary experiences.",
+  keywords: [
+    "Mepra",
+    "Italian Flatware",
+    "Luxury Cutlery",
+    "Silverware",
+    "Kitchenware",
+    "Made in Italy",
+  ],
   authors: [{ name: "Mepra Egypt" }],
   creator: "Mepra",
   icons: {
@@ -34,7 +38,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    // You can remove 'url' here as it will now inherit from metadataBase
     siteName: "Mepra Egypt",
     images: [
       {
@@ -47,10 +50,30 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
 };
+
+// Organization JSON-LD
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Mepra Egypt",
+  url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  logo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/logo.png`,
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+31 85 303 26 59",
+    contactType: "customer service",
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>{/* REMOVED: Manual meta tags in favor of the exports above */}</head>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+      </head>
       <body className="safe-top safe-bottom">
         <AuthSessionProvider>{children}</AuthSessionProvider>
         <Toaster
