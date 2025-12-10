@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { Resend } from "resend";
 import ShippingUpdateEmail from "@/components/ui/email/shipping-update";
+import { PaymentStatus } from "@prisma/client";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -80,5 +81,32 @@ export async function fulfillOrderAction(
   } catch (error) {
     console.error("Fulfillment Error:", error);
     return { success: false, message: "Failed to fulfill order." };
+  }
+}
+
+export async function markOrderAsPaidAction(orderId: string) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "admin") {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  try {
+    // 1. Update Payment Status to CAPTURED
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { paymentStatus: PaymentStatus.CAPTURED },
+    });
+
+    // 2. Also update the Payment record if it exists
+    await prisma.payment.updateMany({
+      where: { orderId, provider: "CASH_ON_DELIVERY" },
+      data: { status: PaymentStatus.CAPTURED },
+    });
+
+    revalidatePath(`/admin/orders/${orderId}`);
+    return { success: true, message: "Order marked as paid." };
+  } catch (error) {
+    console.error("Mark Paid Error:", error);
+    return { success: false, message: "Failed to update payment status." };
   }
 }

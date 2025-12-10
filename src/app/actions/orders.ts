@@ -180,3 +180,73 @@ export async function issueUpgradeInviteAction(orderId: string, email: string) {
     return { success: false, error: "An unexpected error occurred." };
   }
 }
+
+export async function submitCodOrder(orderId: string) {
+  const session = await getServerSession(authOptions);
+
+  // 1. Fetch the order
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+
+  if (!order) {
+    return { success: false, message: "Order not found." };
+  }
+
+  // Security: If user is logged in, ensure they own the order
+  if (session?.user?.id && order.userId !== session.user.id) {
+    return { success: false, message: "Unauthorized." };
+  }
+
+  // Prevent double submission if already confirmed
+  if (order.status === "CONFIRMED" || order.status === "SHIPPED") {
+    return { success: true, message: "Order already placed." };
+  }
+
+  try {
+    // 2. Transaction: Create Payment Record (Pending) & Update Order
+    await prisma.$transaction(async (tx) => {
+      // Create a "Cash" payment record for tracking
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          provider: "CASH_ON_DELIVERY", // Mark explicitly as COD
+          amount: order.total,
+          status: PaymentStatus.PENDING, // Money not collected yet
+        },
+      });
+
+      // Update Order Status
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          status: OrderStatus.CONFIRMED, // Order is officially placed
+          paymentStatus: PaymentStatus.PENDING, // Waiting for cash
+        },
+      });
+
+      // 3. Decrement Inventory (Critical for preventing overselling)
+      await decrementInventory(order.items);
+    });
+
+    // 4. Send Emails (Non-blocking)
+    // We re-fetch to ensure we have the latest status if needed, or just use the object we have
+    const updatedOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true }, // Re-include items for email
+    });
+
+    if (updatedOrder) {
+      Promise.all([
+        sendOrderConfirmationEmail(updatedOrder),
+        notifyStaffOfNewOrder(updatedOrder),
+      ]).catch((err) => console.error("Email error:", err));
+    }
+
+    return { success: true, message: "Order placed successfully!" };
+  } catch (error) {
+    console.error("COD Submission Error:", error);
+    return { success: false, message: "Failed to place order. Please try again." };
+  }
+}

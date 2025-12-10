@@ -1,32 +1,67 @@
+// src/lib/shipping-rates.ts
+
 export type ShippingMethodType = "standard" | "express";
 
 export interface ShippingRate {
   id: ShippingMethodType;
   name: string;
   description: string;
-  priceCents: number; // Stored in cents (e.g., 5000 = 50.00 EGP)
+  priceCents: number;
 }
 
-// 1. Define Zones
-const ZONES = {
-  CAIRO_GIZA: ["Cairo", "Giza", "Helwan", "6th of October"],
+// 1. Official List of Egyptian Governorates
+export const GOVERNORATES = [
+  "Cairo",
+  "Giza",
+  "Alexandria",
+  "Dakahlia",
+  "Red Sea",
+  "Beheira",
+  "Fayoum",
+  "Gharbia",
+  "Ismailia",
+  "Monufia",
+  "Minya",
+  "Qalyubia",
+  "New Valley",
+  "Suez",
+  "Aswan",
+  "Assiut",
+  "Beni Suef",
+  "Port Said",
+  "Damietta",
+  "Sharkia",
+  "South Sinai",
+  "Kafr Al Sheikh",
+  "Matrouh",
+  "Luxor",
+  "Qena",
+  "North Sinai",
+  "Sohag",
+] as const;
+
+export type Governorate = (typeof GOVERNORATES)[number];
+
+// 2. Zone Mapping (Grouping Governorates by Price)
+const ZONE_MAP: Record<string, string[]> = {
+  CAIRO_GIZA: ["Cairo", "Giza", "Helwan", "6th of October"], // Kept aliases for backward compat if needed
   ALEXANDRIA: ["Alexandria"],
   DELTA: [
     "Qalyubia",
     "Gharbia",
-    "Menofia",
+    "Monufia",
     "Beheira",
     "Dakahlia",
-    "Kafr El Sheikh",
+    "Kafr Al Sheikh",
     "Damietta",
-    "Sharqia",
+    "Sharkia",
   ],
   CANAL: ["Port Said", "Ismailia", "Suez"],
-  UPPER_EGYPT: ["Beni Suef", "Fayoum", "Minya", "Asyut", "Sohag", "Qena", "Luxor", "Aswan"],
+  UPPER_EGYPT: ["Beni Suef", "Fayoum", "Minya", "Assiut", "Sohag", "Qena", "Luxor", "Aswan"],
   RED_SEA: ["Red Sea", "Hurghada", "South Sinai", "North Sinai", "Matrouh", "New Valley"],
 };
 
-// 2. Define Base Rates per Zone (in Cents)
+// 3. Rates per Zone (in Cents)
 const ZONE_RATES: Record<string, number> = {
   default: 6000, // 60 EGP
   cairo_giza: 4000, // 40 EGP
@@ -37,24 +72,22 @@ const ZONE_RATES: Record<string, number> = {
   red_sea: 9000, // 90 EGP
 };
 
-// 3. Helper to determine zone from state name
 function getZoneKey(state: string): string {
   const normalizedState = state.trim().toLowerCase();
 
-  if (ZONES.CAIRO_GIZA.some((c) => normalizedState.includes(c.toLowerCase()))) return "cairo_giza";
-  if (ZONES.ALEXANDRIA.some((c) => normalizedState.includes(c.toLowerCase()))) return "alexandria";
-  if (ZONES.DELTA.some((c) => normalizedState.includes(c.toLowerCase()))) return "delta";
-  if (ZONES.CANAL.some((c) => normalizedState.includes(c.toLowerCase()))) return "canal";
-  if (ZONES.UPPER_EGYPT.some((c) => normalizedState.includes(c.toLowerCase())))
+  if (ZONE_MAP.CAIRO_GIZA.some((c) => normalizedState.includes(c.toLowerCase())))
+    return "cairo_giza";
+  if (ZONE_MAP.ALEXANDRIA.some((c) => normalizedState.includes(c.toLowerCase())))
+    return "alexandria";
+  if (ZONE_MAP.DELTA.some((c) => normalizedState.includes(c.toLowerCase()))) return "delta";
+  if (ZONE_MAP.CANAL.some((c) => normalizedState.includes(c.toLowerCase()))) return "canal";
+  if (ZONE_MAP.UPPER_EGYPT.some((c) => normalizedState.includes(c.toLowerCase())))
     return "upper_egypt";
-  if (ZONES.RED_SEA.some((c) => normalizedState.includes(c.toLowerCase()))) return "red_sea";
+  if (ZONE_MAP.RED_SEA.some((c) => normalizedState.includes(c.toLowerCase()))) return "red_sea";
 
   return "default";
 }
 
-/**
- * Calculates available shipping methods and costs based on the address state.
- */
 export function getShippingOptions(state: string): ShippingRate[] {
   const zoneKey = getZoneKey(state);
   const basePrice = ZONE_RATES[zoneKey] ?? ZONE_RATES.default;
@@ -70,7 +103,7 @@ export function getShippingOptions(state: string): ShippingRate[] {
       id: "express",
       name: "Express Shipping",
       description: "Delivery in 1-2 business days",
-      priceCents: basePrice * 2, // Express is double the price
+      priceCents: basePrice * 2,
     },
   ];
 }

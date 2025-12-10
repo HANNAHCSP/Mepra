@@ -96,6 +96,7 @@ export async function requestRefundAction(
 
 /**
  * Action for an admin to approve or deny a refund request.
+ * UPDATED: Handles both Paymob (Auto) and COD (Manual) logic.
  */
 export async function processRefundAction(refundId: string, action: "approve" | "deny") {
   const session = await getServerSession(authOptions);
@@ -112,6 +113,7 @@ export async function processRefundAction(refundId: string, action: "approve" | 
     throw new Error("Refund not found.");
   }
 
+  // --- DENY LOGIC ---
   if (action === "deny") {
     await prisma.$transaction([
       prisma.refund.update({
@@ -123,21 +125,39 @@ export async function processRefundAction(refundId: string, action: "approve" | 
         data: { status: OrderStatus.DELIVERED },
       }),
     ]);
-  } else if (action === "approve") {
+  }
+
+  // --- APPROVE LOGIC ---
+  else if (action === "approve") {
+    // 1. CASH ON DELIVERY (Manual Refund)
+    // If it's COD, we assume the admin has manually returned the cash or sent a bank transfer.
+    // We mark it as SUCCEEDED immediately.
+    if (refund.payment.provider === "CASH_ON_DELIVERY") {
+      await finalizeRefundAction(refund.id, true, true);
+
+      // Revalidate and return early
+      revalidatePath(`/admin/orders/${refund.orderId}`);
+      revalidatePath("/admin/orders");
+      revalidatePath("/admin");
+      return;
+    }
+
+    // 2. ONLINE PAYMENT (Paymob Auto Refund)
     if (!refund.payment.providerRef) {
       throw new Error("Payment transaction reference not found.");
     }
 
     const authToken = await getPaymobAuthToken();
 
-    // 1. Call Paymob
+    // Call Paymob API
     const paymobRefund = await createPaymobRefund(
       authToken,
       refund.payment.providerRef,
       refund.amountCents
     );
 
-    // 2. Update DB - Check if webhook beat us to it
+    // Update DB to PROCESSING (Wait for Webhook to set SUCCEEDED)
+    // We check if it's REQUESTED to update state, otherwise just update the providerRef
     const currentRefund = await prisma.refund.findUnique({
       where: { id: refundId },
       select: { status: true },
@@ -152,7 +172,6 @@ export async function processRefundAction(refundId: string, action: "approve" | 
         },
       });
     } else {
-      // Just update the providerRef if it's missing (webhook might have set status but not this)
       await prisma.refund.update({
         where: { id: refundId },
         data: {
@@ -171,8 +190,6 @@ export async function processRefundAction(refundId: string, action: "approve" | 
  * Helper to handle the case where Paymob sends a Payment Webhook with is_refunded=true.
  */
 export async function processPaymentRefundUpdate(paymentProviderRef: string) {
-  // Find the payment and associated refund.
-  // We look for refunds that are PROCESSING or REQUESTED to fix the race condition.
   const payment = await prisma.payment.findUnique({
     where: { providerRef: paymentProviderRef },
     include: {
@@ -195,7 +212,6 @@ export async function processPaymentRefundUpdate(paymentProviderRef: string) {
 
   console.log(`Found pending refund ${refund.id} for payment ${paymentProviderRef}. Finalizing...`);
 
-  // Use internal ID to finalize since we found it via relation
   await finalizeRefundAction(refund.id, true, true);
 }
 
@@ -211,7 +227,6 @@ export async function finalizeRefundAction(
   isInternalId: boolean = false
 ) {
   return await prisma.$transaction(async (tx) => {
-    // Use a const with conditional logic to satisfy TypeScript strict null checks
     const refund = isInternalId
       ? await tx.refund.findUnique({
           where: { id: lookupId },
@@ -222,7 +237,6 @@ export async function finalizeRefundAction(
           include: { payment: true, order: true },
         });
 
-    // TypeScript Check: Ensure 'refund' exists before proceeding
     if (
       !refund ||
       (refund.status !== RefundStatus.PROCESSING && refund.status !== RefundStatus.REQUESTED)
@@ -271,7 +285,6 @@ export async function finalizeRefundAction(
       lastName?: string;
     }
 
-    // Safety check for JSON parsing
     let rawAddress: ShippingAddress = {};
     if (typeof refund.order.shippingAddress === "string") {
       try {
@@ -295,7 +308,6 @@ export async function finalizeRefundAction(
       status: updatedRefund.status,
     });
 
-    // Revalidate paths using the non-null 'refund' object
     revalidatePath(`/account/orders/${refund.order.orderNumber}`);
     revalidatePath(`/admin/orders/${refund.orderId}`);
     revalidatePath("/admin/orders");
