@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AddressForm } from "@/components/ui/account/address-form";
-import { X, Pencil, Plus } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import type { Address } from "@prisma/client";
 
 interface AddressModalProps {
-  address?: Address; // If present, we are editing. If null, we are creating.
-  trigger?: React.ReactNode; // Custom button to open modal
+  address?: Address;
+  trigger?: React.ReactNode;
 }
 
 export function AddressModal({ address, trigger }: AddressModalProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Close modal when form submits successfully (we'll pass this handler down)
   const handleSuccess = () => {
     setIsOpen(false);
   };
@@ -23,7 +22,7 @@ export function AddressModal({ address, trigger }: AddressModalProps) {
     <>
       <div onClick={() => setIsOpen(true)}>
         {trigger || (
-          <Button variant="outline" className="w-full gap-2">
+          <Button variant="outline" className="gap-2">
             <Plus className="w-4 h-4" /> Add New Address
           </Button>
         )}

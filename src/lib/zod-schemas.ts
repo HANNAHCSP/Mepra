@@ -1,5 +1,6 @@
 // src/lib/zod-schemas.ts
 import { z } from 'zod';
+import { GOVERNORATES } from '@/lib/shipping-rates';
 
 // Define the schema for the shipping address
 export const ShippingAddressSchema = z.object({
@@ -9,7 +10,14 @@ export const ShippingAddressSchema = z.object({
   address: z.string().min(1, "Address is required."),
   apartment: z.string().optional(),
   city: z.string().min(1, "City is required."),
-  state: z.string().min(1, "State/Province is required."), // Added this field
+  
+  // FIX: 
+  // 1. Cast GOVERNORATES to [string, ...string[]] to satisfy Zod's tuple requirement.
+  // 2. Use 'message' instead of 'errorMap' for the custom error object.
+  state: z.enum(GOVERNORATES as unknown as [string, ...string[]], {
+    message: "Please select a valid Governorate.",
+  }),
+
   country: z.string().min(1, "Country is required."),
   zipCode: z.string().min(1, "ZIP code is required."),
   phone: z.string().optional(),

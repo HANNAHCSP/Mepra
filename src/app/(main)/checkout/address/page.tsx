@@ -3,21 +3,29 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AddressSelection from "@/components/ui/checkout/address-selection";
 import type { Address } from "@prisma/client";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Shipping Address - Mepra",
+  description: "Select or add your shipping address for checkout",
+};
 
 export default async function AddressPage() {
   const session = await getServerSession(authOptions);
 
-  // 1. Initialize as empty array
   let addresses: Address[] = [];
 
-  // 2. Fetch addresses ONLY if user is logged in
   if (session?.user?.id) {
-    addresses = await prisma.address.findMany({
-      where: { userId: session.user.id },
-      orderBy: { isDefault: "desc" },
-    });
+    try {
+      addresses = await prisma.address.findMany({
+        where: { userId: session.user.id },
+        orderBy: { isDefault: "desc" },
+      });
+    } catch (error) {
+      console.error("Failed to fetch user addresses:", error);
+      // Addresses remain empty array - component will handle gracefully
+    }
   }
 
-  // 3. Pass the fetched 'addresses' array to the component
-  return <AddressSelection savedAddresses={addresses} userEmail={session?.user?.email} />;
+  return <AddressSelection savedAddresses={addresses} userEmail={session?.user?.email ?? null} />;
 }

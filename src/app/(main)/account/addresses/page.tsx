@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { AddressCard } from "@/components/ui/account/address-card";
-import { AddressModal } from "@/components/ui/account/address-modal"; // <--- Import
+import { AddressModal } from "@/components/ui/account/address-modal";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,14 +27,14 @@ export default async function AddressesPage() {
             Manage your saved shipping locations.
           </p>
         </div>
-        <AddressModal /> {/* <--- The "Add New" button is default trigger */}
+        <AddressModal />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {addresses.length > 0 ? (
           addresses.map((address) => <AddressCard key={address.id} address={address} />)
         ) : (
-          <div className="col-span-full py-12 text-center border-2 border-dashed border-border rounded-xl bg-accent/30">
+          <div className="col-span-full py-12 text-center border border-dashed border-border rounded-xl bg-accent/30">
             <p className="text-muted-foreground mb-4">You have no saved addresses.</p>
             <AddressModal
               trigger={
