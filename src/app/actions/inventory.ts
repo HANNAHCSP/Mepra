@@ -29,21 +29,25 @@ export async function decrementInventory(items: OrderItem[]): Promise<void> {
 
         // 2. Check for Low Stock
         if (updatedVariant.stock <= LOW_STOCK_THRESHOLD) {
-          console.log(`⚠️ Low stock detected for ${updatedVariant.product.name} (Stock: ${updatedVariant.stock})`);
-          
+          console.log(
+            `⚠️ Low stock detected for ${updatedVariant.product.name} (Stock: ${updatedVariant.stock})`
+          );
+
           // 3. Send Email (Fire & Forget - don't await/block the transaction)
           if (process.env.RESEND_API_KEY) {
-            resend.emails.send({
-              from: "Mepra Inventory <onboarding@resend.dev>",
-              to: ADMIN_EMAIL,
-              subject: `Low Stock Alert: ${updatedVariant.product.name}`,
-              react: LowStockEmail({
-                productName: updatedVariant.product.name,
-                sku: updatedVariant.sku || "N/A",
-                remainingStock: updatedVariant.stock,
-                productId: updatedVariant.productId,
-              }),
-            }).catch(err => console.error("Failed to send low stock email:", err));
+            resend.emails
+              .send({
+                from: "Mepra Inventory <onboarding@resend.dev>",
+                to: ADMIN_EMAIL,
+                subject: `Low Stock Alert: ${updatedVariant.product.name}`,
+                react: LowStockEmail({
+                  productName: updatedVariant.product.name,
+                  sku: updatedVariant.sku || "N/A",
+                  remainingStock: updatedVariant.stock,
+                  productId: updatedVariant.productId,
+                }),
+              })
+              .catch((err) => console.error("Failed to send low stock email:", err));
           }
         }
       }
@@ -53,10 +57,33 @@ export async function decrementInventory(items: OrderItem[]): Promise<void> {
   } catch (error) {
     console.error("Failed to decrement inventory:", error);
     // Note: If stock goes below 0, Prisma will throw an error here automatically
-    // because integer fields cannot be negative if we used unsigned logic, 
+    // because integer fields cannot be negative if we used unsigned logic,
     // but standard Postgres ints allow negatives.
     // Ideally, you should have a check `stock: { gte: item.quantity }` inside the update's where clause,
-    // but `update` throws if record not found. 
+    // but `update` throws if record not found.
     // For simplicity in this flow, we rely on the pre-check done in `createOrder` (validateStock).
+  }
+}
+
+// --- NEW: Restore Inventory on Cancel ---
+export async function restoreInventory(items: OrderItem[]): Promise<void> {
+  if (!items || items.length === 0) return;
+
+  console.log(`Restoring inventory for ${items.length} line items.`);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    });
+    console.log("Inventory restored successfully.");
+  } catch (error) {
+    console.error("Failed to restore inventory:", error);
+    // Don't throw, just log. Cancellation should arguably proceed even if restocking fails slightly,
+    // though ideally it should be transactional with the order update.
   }
 }

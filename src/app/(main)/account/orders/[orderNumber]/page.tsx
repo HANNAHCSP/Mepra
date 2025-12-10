@@ -10,6 +10,7 @@ import RefundSection from "@/components/ui/account/refund-section";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import CancelOrderButton from "@/components/ui/account/cancel-order-button"; // Import component
 
 type ShippingAddress = z.infer<typeof ShippingAddressSchema>;
 
@@ -52,21 +53,30 @@ export default async function OrderDetailsPage({
 
   const shippingAddress = order.shippingAddress as ShippingAddress;
 
+  // Logic to determine if order is cancellable
+  const isCancellable =
+    order.status === "PENDING" || order.status === "CONFIRMED" || order.status === "DRAFT";
+
   return (
     <div className="space-y-8">
-      {/* Header with Invoice Button */}
-      <div className="flex justify-between items-start">
+      {/* Header with Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold">Order Details</h1>
           <p className="text-gray-500">
             Order #{order.orderNumber} placed on {new Date(order.createdAt).toLocaleDateString()}
           </p>
         </div>
-        <Link href={`/orders/${order.id}/invoice`} target="_blank">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Printer className="w-4 h-4" /> Invoice
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 w-full sm:w-auto">
+          <Link href={`/orders/${order.id}/invoice`} target="_blank" className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
+              <Printer className="w-4 h-4" /> Invoice
+            </Button>
+          </Link>
+
+          {/* Conditionally Render Cancel Button */}
+          {isCancellable && <CancelOrderButton orderId={order.id} />}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -123,6 +133,7 @@ export default async function OrderDetailsPage({
         </ul>
       </div>
 
+      {/* Refunds Section (If applicable) */}
       <RefundSection order={order} />
     </div>
   );

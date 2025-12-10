@@ -7,12 +7,13 @@ import { ShippingAddressSchema } from "@/lib/zod-schemas";
 import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { addHours } from "date-fns";
 import crypto from "crypto";
-import { decrementInventory } from "./inventory";
+import { decrementInventory, restoreInventory } from "./inventory"; // Updated import
 import { sendOrderConfirmationEmail, notifyStaffOfNewOrder } from "@/lib/email";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sendGuestUpgradeEmail } from "@/lib/email";
 import { getShippingOptions } from "@/lib/shipping-rates";
+import { revalidatePath } from "next/cache"; // Added for revalidation
 
 export async function createOrder() {
   const cookieStore = await cookies();
@@ -248,5 +249,67 @@ export async function submitCodOrder(orderId: string) {
   } catch (error) {
     console.error("COD Submission Error:", error);
     return { success: false, message: "Failed to place order. Please try again." };
+  }
+}
+
+// --- NEW: Cancel Order Action ---
+export async function cancelOrderAction(orderId: string) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return { success: false, message: "Order not found" };
+    }
+
+    if (order.userId !== session.user.id) {
+      return { success: false, message: "You do not have permission to cancel this order." };
+    }
+
+    // ELIGIBILITY CHECK:
+    // Only allow cancellation if status is DRAFT, PENDING, or CONFIRMED.
+    // If it's SHIPPED or DELIVERED, it's too late.
+    const eligibleStatuses: OrderStatus[] = [OrderStatus.DRAFT, OrderStatus.PENDING, OrderStatus.CONFIRMED];
+
+    if (!eligibleStatuses.includes(order.status)) {
+      return {
+        success: false,
+        message: `Cannot cancel order with status: ${order.status}. Please contact support.`,
+      };
+    }
+
+    // 1. Transaction: Update Status
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.CANCELED,
+        // If it was captured (paid), we might want to flag it for refund or keep it as captured
+        // so admins see they need to refund. For COD (Pending), it just cancels.
+        // We won't change paymentStatus here to avoid losing the "Paid" record if it exists.
+      },
+    });
+
+    // 2. Restore Inventory (if it was deducted)
+    // Inventory is deducted on finalizeOrder (CONFIRMED) or submitCodOrder (CONFIRMED).
+    // So if status was CONFIRMED, we must restore.
+    if (order.status === OrderStatus.CONFIRMED) {
+      await restoreInventory(order.items);
+    }
+
+    revalidatePath(`/account/orders/${order.orderNumber}`);
+    revalidatePath("/account/orders");
+
+    return { success: true, message: "Order canceled successfully." };
+  } catch (error) {
+    console.error("Cancel Order Error:", error);
+    return { success: false, message: "Failed to cancel order." };
   }
 }
